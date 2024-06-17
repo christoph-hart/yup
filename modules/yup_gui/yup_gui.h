@@ -57,6 +57,8 @@
 //==============================================================================
 
 #include "application/yup_Application.h"
+#include "application/yup_Clipboard.h"
+#include "application/yup_UndoManager.h"
 #include "keyboard/yup_KeyModifiers.h"
 #include "keyboard/yup_KeyPress.h"
 #include "mouse/yup_MouseEvent.h"
@@ -68,5 +70,6 @@
 #include "widgets/yup_Button.h"
 #include "widgets/yup_TextButton.h"
 #include "widgets/yup_Slider.h"
+#include "widgets/yup_Label.h"
 #include "artboard/yup_Artboard.h"
 #include "windowing/yup_DocumentWindow.h"

@@ -62,9 +62,13 @@
 
 //==============================================================================
 #include "native/yup_Windowing_glfw.cpp"
+#include "native/yup_Windows.cpp"
 
 //==============================================================================
 #include "application/yup_Application.cpp"
+#include "application/yup_Clipboard.cpp"
+#include "application/yup_UndoManager.cpp"
+
 #include "desktop/yup_Desktop.cpp"
 #include "mouse/yup_MouseEvent.cpp"
 #include "component/yup_ComponentNative.cpp"
@@ -72,5 +76,6 @@
 #include "widgets/yup_Button.cpp"
 #include "widgets/yup_TextButton.cpp"
 #include "widgets/yup_Slider.cpp"
+#include "widgets/yup_Label.cpp"
 #include "artboard/yup_Artboard.cpp"
 #include "windowing/yup_DocumentWindow.cpp"
