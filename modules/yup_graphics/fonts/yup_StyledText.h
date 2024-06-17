@@ -35,6 +35,17 @@ public:
         right
     };
 
+    static rive::TextAlign getRiveTextAlign(Alignment a)
+    {
+	    switch(a)
+	    {
+        case Alignment::left: return rive::TextAlign::left;
+        case Alignment::center: return rive::TextAlign::center;
+        case Alignment::right: return rive::TextAlign::right;
+	    default: jassertfalse; return rive::TextAlign::center;
+	    }
+    }
+
     //==============================================================================
     StyledText();
 
@@ -52,6 +63,15 @@ public:
 
     //==============================================================================
     const std::vector<rive::RawPath>& getGlyphs() const;
+
+
+    rive::Paragraph* getParagraph(int index) const
+    {
+    	if(isPositiveAndBelow(index, paragraphs.size()))
+			return paragraphs.begin() + index;
+
+        return nullptr;
+    }
 
 private:
     rive::TextRun append (const Font& font,

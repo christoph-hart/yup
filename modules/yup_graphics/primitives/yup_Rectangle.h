@@ -66,6 +66,11 @@ public:
     {
     }
 
+    constexpr Rectangle (const rive::AABB& riveBounds) noexcept
+        : xy(riveBounds.left(), riveBounds.top())
+        , size(riveBounds.width(), riveBounds.height())
+    { }
+
     /** Constructs a rectangle with specified position as a Point and dimensions.
 
         @param xy The position of the top-left corner as a Point.
@@ -384,6 +389,19 @@ public:
         return { xy, newSize.template to<ValueType>() };
     }
 
+    [[nodiscard]] constexpr Rectangle<ValueType> withSizeKeepingCentre(ValueType width, ValueType height) const noexcept
+    {
+        const Size<ValueType> newSize(width, height);
+
+        auto center = getCenter();
+
+        Rectangle<ValueType> nr(0, 0, width, height);
+
+        nr.setCenter(center);
+
+        return nr;
+    }
+
     /** Returns a new rectangle with the specified dimensions.
 
         This method creates a new rectangle with the same position but different width and height.
@@ -401,6 +419,19 @@ public:
         static_assert (std::numeric_limits<ValueType>::max() >= std::numeric_limits<T>::max(), "Invalid narrow cast");
 
         return { xy, static_cast<ValueType> (width), static_cast<ValueType> (height) };
+    }
+
+    template <class T>
+    [[nodiscard]] constexpr Rectangle<float> toFloat() const noexcept
+    {
+        return { static_cast<float>(getX()), static_cast<float>(getY()),
+            static_cast<float>(getWidth()), static_cast<float>(getHeight()) };
+    }
+
+    template <class T>
+    [[nodiscard]] constexpr Rectangle<int> toNearestInt() const noexcept
+    {
+        return { roundToInt(getX()), roundToInt(getY()), roundToInt(getWidth()), roundToInt(getHeight()) };
     }
 
     /** Returns a new rectangle with its size scaled by a factor.

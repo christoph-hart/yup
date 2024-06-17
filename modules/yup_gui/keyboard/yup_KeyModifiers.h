@@ -173,13 +173,15 @@ public:
         return !(*this == other);
     }
 
-private:
     static constexpr int shiftMask = 0x0001;
     static constexpr int controlMask = 0x0002;
     static constexpr int altMask = 0x0004;
     static constexpr int superMask = 0x0008;
     static constexpr int capsLockMask = 0x0010;
     static constexpr int numLockMask = 0x0020;
+
+private:
+    
 
     int32_t modifiers = 0;
 };

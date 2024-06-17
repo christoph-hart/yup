@@ -24,6 +24,28 @@ namespace yup
 
 class JUCE_API Component;
 
+class JUCE_API MouseCursor
+{
+public:
+
+	enum class StandardCursorTypes
+	{
+        NormalCursor,
+		DraggingHandCursor,
+        IBeamCursor,
+        numCursorTypes
+	};
+
+    MouseCursor(StandardCursorTypes c = StandardCursorTypes::NormalCursor):
+      type(c)
+    {}
+
+    void setCursor(void* nativeHandle);
+    
+
+    StandardCursorTypes type = StandardCursorTypes::NormalCursor;
+};
+
 //==============================================================================
 class JUCE_API MouseEvent
 {
