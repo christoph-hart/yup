@@ -515,6 +515,7 @@ void Component::paintOverChildren (Graphics& g) {}
 void Component::mouseEnter (const MouseEvent& event) {}
 void Component::mouseExit (const MouseEvent& event) {}
 void Component::mouseDown (const MouseEvent& event) {}
+void Component::mouseDoubleClick (const MouseEvent& event) {}
 void Component::mouseMove (const MouseEvent& event) {}
 void Component::mouseDrag (const MouseEvent& event) {}
 void Component::mouseUp (const MouseEvent& event) {}
@@ -588,7 +589,24 @@ void Component::internalMouseDown (const MouseEvent& event)
     if (! isVisible())
         return;
 
-    mouseDown (event);
+    auto now = Time::getMillisecondCounter();
+
+    auto delta = now - lastClick;
+
+    if(delta < 200)
+    {
+	    mouseDoubleClick(event);
+    }
+    else
+    {
+	    mouseDown (event);
+    }
+
+    lastClick = now;
+
+
+
+    
 }
 
 void Component::internalMouseMove (const MouseEvent& event)

@@ -160,6 +160,7 @@ public:
     //==============================================================================
     virtual void mouseEnter (const MouseEvent& event);
     virtual void mouseExit (const MouseEvent& event);
+    virtual void mouseDoubleClick(const MouseEvent& event);
     virtual void mouseDown (const MouseEvent& event);
     virtual void mouseMove (const MouseEvent& event);
     virtual void mouseDrag (const MouseEvent& event);
@@ -214,6 +215,8 @@ private:
         uint32 optionsValue;
         Options options;
     };
+
+    uint32 lastClick = 0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Component)
 };
