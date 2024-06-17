@@ -266,6 +266,11 @@ public:
         return *this;
     }
 
+    const Rectangle<ValueType>* begin() const { return rectangles.begin(); }
+    const Rectangle<ValueType>* end() const { return rectangles.end(); }
+    Rectangle<ValueType>* begin() { return rectangles.begin(); }
+    Rectangle<ValueType>* end() { return rectangles.end(); }
+
 private:
     void mergeRectangles()
     {

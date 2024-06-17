@@ -570,6 +570,8 @@ void Component::internalPaint (Graphics& g, bool renderContinuous)
 
 void Component::internalMouseEnter (const MouseEvent& event)
 {
+    updateMouseCursor();
+
     if (! isVisible())
         return;
 
@@ -578,6 +580,8 @@ void Component::internalMouseEnter (const MouseEvent& event)
 
 void Component::internalMouseExit (const MouseEvent& event)
 {
+    updateMouseCursor();
+
     if (! isVisible())
         return;
 
@@ -586,7 +590,9 @@ void Component::internalMouseExit (const MouseEvent& event)
 
 void Component::internalMouseDown (const MouseEvent& event)
 {
-    if (! isVisible())
+    updateMouseCursor();
+
+	if (! isVisible())
         return;
 
     auto now = Time::getMillisecondCounter();
@@ -611,6 +617,8 @@ void Component::internalMouseDown (const MouseEvent& event)
 
 void Component::internalMouseMove (const MouseEvent& event)
 {
+    updateMouseCursor();
+
     if (! isVisible())
         return;
 
@@ -619,6 +627,8 @@ void Component::internalMouseMove (const MouseEvent& event)
 
 void Component::internalMouseDrag (const MouseEvent& event)
 {
+    updateMouseCursor();
+
     if (! isVisible())
         return;
 
@@ -627,6 +637,8 @@ void Component::internalMouseDrag (const MouseEvent& event)
 
 void Component::internalMouseUp (const MouseEvent& event)
 {
+    updateMouseCursor();
+
     if (! isVisible())
         return;
 
@@ -676,4 +688,8 @@ void Component::internalUserTriedToCloseWindow()
     userTriedToCloseWindow();
 }
 
+void Component::updateMouseCursor()
+{
+    cursor.setCursor(getNativeHandle());
+}
 } // namespace yup

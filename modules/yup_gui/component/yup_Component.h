@@ -149,6 +149,12 @@ public:
     void leaveFocus();
     bool hasFocus() const;
 
+    void setMouseCursor(const MouseCursor& mouseCursor)
+    {
+	    cursor = mouseCursor;
+        updateMouseCursor();
+    }
+
     //==============================================================================
     NamedValueSet& getProperties();
     const NamedValueSet& getProperties() const;
@@ -186,6 +192,8 @@ private:
     void internalResized (int width, int height, float scaleDpi);
     void internalUserTriedToCloseWindow();
 
+    void updateMouseCursor();
+
     friend class ComponentNative;
     friend class GLFWComponentNative;
     friend class WeakReference<Component>;
@@ -198,6 +206,8 @@ private:
     WeakReference<Component>::Master masterReference;
     NamedValueSet properties;
     uint8 opacity = 255;
+
+    MouseCursor cursor;
 
     struct Options
     {

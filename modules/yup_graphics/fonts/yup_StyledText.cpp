@@ -88,8 +88,9 @@ rive::TextRun StyledText::append (const Font& font,
 
 //==============================================================================
 
-void StyledText::layout (const Rectangle<float>& rect, Alignment align)
+Array<std::pair<float, Range<int>>> StyledText::layout (const Rectangle<float>& rect, Alignment align)
 {
+    Array<std::pair<float, Range<int>>> yPositions;
     glyphPaths.clear();
 
     float x = rect.getX();
@@ -114,6 +115,11 @@ void StyledText::layout (const Rectangle<float>& rect, Alignment align)
     {
         rive::SimpleArray<rive::GlyphLine>& lines = linesArray[paragraphIndex];
 
+        
+        auto yBaseline = y;
+
+        
+
         rive::GlyphLine::ComputeLineSpacing (paragraphIndex == 0,
                                              lines,
                                              paragraph.runs,
@@ -126,8 +132,17 @@ void StyledText::layout (const Rectangle<float>& rect, Alignment align)
 
         y += lineHeight;
 
+        auto startIndex = *(paragraph.runs.begin()->textIndices.begin());
+        auto endIndex = *( ((paragraph.runs.end()-1))->textIndices.end()-1);
+
+        Range<int> r(startIndex, endIndex+1);
+
+        yPositions.add({yBaseline, r});
+
         ++paragraphIndex;
     }
+
+    return yPositions;
 }
 
 //==============================================================================

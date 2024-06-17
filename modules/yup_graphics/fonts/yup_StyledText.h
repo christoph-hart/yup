@@ -59,7 +59,7 @@ public:
                      const char text[]);
 
     //==============================================================================
-    void layout (const Rectangle<float>& rect, Alignment align);
+    Array<std::pair<float, Range<int>>> layout (const Rectangle<float>& rect, Alignment align);
 
     //==============================================================================
     const std::vector<rive::RawPath>& getGlyphs() const;

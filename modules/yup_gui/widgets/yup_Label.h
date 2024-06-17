@@ -27,14 +27,16 @@ namespace yup
  *  This is a merger of the juce::TextEditor and the juce::Label class. It implements most
  *  of the text editing logic from scratch, including:
  *
- *  - navigation with the mouse / key buttons
- *  - special commands (copy / paste)
+ *  - navigation with the mouse / key buttons, shows a cursor
+ *  - entering text
+ *  - clipboard access (copy / paste)
  *  - selection
  *  - undo support
  *
  *  Current limitations:
  *
  *  - windows only
+ *  - no multiline support
  *  - it doesn't really detect the key strokes correctly (so you can't enter special characters).
  *  - the keyboard layout is not recognized (eg. Y / Z mixup between german and US layout).
  *
@@ -76,6 +78,11 @@ public:
     void setFont(const yup::Font& f, float newFontSize=16.0f);
     void setJustification(StyledText::Alignment newAlignment);
 
+    void setMultiline(bool shouldBeMultiline)
+    {
+	    multiline = shouldBeMultiline;
+    }
+
     // ===============================================================================
 
     void addListener(Listener* l);
@@ -100,6 +107,18 @@ private:
     // A magic number for navigating to the end of the text
     static constexpr int EndPos = 100000;
 
+    // Home
+    static constexpr int LineStart = -50000;
+
+    // End
+    static constexpr int LineEnd = 50000;
+
+    // Down
+    static constexpr int NextLine = 40000;
+
+    // Up
+    static constexpr int PrevLine = -40000;
+    
     // Ctrl + C
     static constexpr int Copy = 100001;
 
@@ -137,9 +156,65 @@ private:
 
         bool moveToStart();
         bool moveToEnd();
+
+        bool moveToStartOfLine()
+        {
+            auto prevIndex = charIndex;
+            charIndex = parent.lineInformation[lineNumber].second.getStart();
+            return prevIndex != charIndex;
+        }
+
+        bool moveToEndOfLine()
+        {
+            auto prevIndex = charIndex;
+            charIndex = parent.lineInformation[lineNumber].second.getEnd();
+            return prevIndex != charIndex;
+        }
+
         bool moveTo(const Cursor& other);
         bool moveTo(int pos);
         bool move(int delta);
+
+        bool moveLine(int delta)
+        {
+            auto xPos = getPosition().getX();
+
+            auto prev = charIndex;
+
+            auto newLineNumber = jlimit(0, parent.lineInformation.size()-1, lineNumber + delta);
+
+            
+
+            auto positionsInNewLine = parent.xPosRanges[newLineNumber];
+
+            if(xPos > positionsInNewLine.getLast().getEnd())
+            {
+	            charIndex = parent.lineInformation[newLineNumber].second.getEnd()-1;
+            }
+            else
+            {
+	            for(int i = 0; i < positionsInNewLine.size(); i++)
+	            {
+		            if(positionsInNewLine[i].contains(xPos))
+		            {
+	                    auto normPos = (xPos - positionsInNewLine[i].getStart()) / positionsInNewLine[i].getLength();
+
+	                    if(normPos > 0.5)
+	                        i++;
+
+			            charIndex = parent.lineInformation[newLineNumber].second.getStart() + i;
+	                    break;
+		            }
+	            }
+            }
+
+            
+
+            lineNumber = newLineNumber;
+
+            return prev != charIndex;
+        }
+
 
         bool updateFromMouseEvent(const MouseEvent& e);
         Rectangle<float> getPosition() const;
@@ -147,18 +222,90 @@ private:
 
         Range<int> getSelection(const Cursor& other) const;
 
+        RectangleList<float> getSelectionRectangles(const Cursor& other) const
+        {
+            RectangleList<float> list;
+
+            auto firstPos = getPosition().withWidth(0.0f);
+			auto secondPos = other.getPosition().withWidth(0.0f);
+
+            if(charIndex > other.charIndex)
+                std::swap(firstPos, secondPos);
+
+            if(lineNumber == other.lineNumber)
+            {
+	            list.addWithoutMerge(firstPos.smallestContainingRectangle(secondPos));
+            }
+            else
+            {
+                auto minChar = jmin(charIndex, other.charIndex);
+                auto maxChar = jmax(charIndex, other.charIndex);
+
+                Cursor minLineEnd(parent);
+
+                minLineEnd.moveTo(minChar);
+                minLineEnd.moveToEndOfLine();
+                auto firstLineEnd = minLineEnd.getPosition().withWidth(0.0f);
+
+                Cursor maxLineStart(parent);
+                maxLineStart.moveTo(maxChar);
+                maxLineStart.moveToStartOfLine();
+
+                auto lastLineStart = maxLineStart.getPosition().withWidth(0.0f);
+
+                list.addWithoutMerge(firstPos.smallestContainingRectangle(firstLineEnd));
+                list.addWithoutMerge(secondPos.smallestContainingRectangle(lastLineStart));
+            }
+
+            Range<int> lineRange(jmin(lineNumber, other.lineNumber), jmax(lineNumber, other.lineNumber));
+
+            for(int i = lineRange.getStart() + 1; i < lineRange.getEnd(); i++)
+            {
+	            auto left = parent.xPosRanges[i].getFirst().getStart();
+                auto y = parent.lineInformation[i].first;
+                auto right = parent.xPosRanges[i].getLast().getEnd();
+                auto w = right - left;
+                auto h = parent.fontSize;
+
+                list.addWithoutMerge({left, y, w, h});
+            }
+
+            return list;
+        }
+
     private:
+
+        void updateLineNumber()
+        {
+	        for(int i = 0; i < parent.lineInformation.size(); i++)
+	        {
+		        if(parent.lineInformation[i].second.contains(charIndex))
+		        {
+			        lineNumber = i;
+                    break;
+		        }
+	        }
+        }
 
         const Label& parent;
         int charIndex = -1;
+        int lineNumber = 0;
     };
 
     yup::UndoManager um;
 
     bool isBeingEdited = false;
 
+    bool multiline = false;
+
+    juce::Array<Range<float>> getXPositions(int lineNumber) const
+    {
+	    return xPosRanges[lineNumber];
+    }
+
     juce::ListenerList<Listener> listeners;
-    juce::Array<Range<float>> xPosRanges;
+    juce::Array<juce::Array<Range<float>>> xPosRanges;
+    Array<std::pair<float, Range<int>>> lineInformation;
 
     Cursor downCursor;
     Cursor dragCursor;
@@ -169,7 +316,6 @@ private:
     String content;
     StyledText text;
 
-    float baseLineY = 0.0f;
     float padding = 5.0f;
     float alpha = 0.0f;
 

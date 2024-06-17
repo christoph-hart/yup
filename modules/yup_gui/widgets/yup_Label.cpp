@@ -84,10 +84,18 @@ void Label::keyDown(const KeyPress& keys, const Point<float>& position)
 	}
 	if(keys.getKey() == KeyPress::enterKey)
 	{
-		leaveFocus();
-		dragCursor.clear();
-		downCursor.clear();
-		repaint();
+		if(multiline)
+		{
+			insert("\n");
+		}
+		else
+		{
+			leaveFocus();
+			dragCursor.clear();
+			downCursor.clear();
+			repaint();
+		}
+
 		return;
 	}
 
@@ -98,10 +106,10 @@ void Label::keyDown(const KeyPress& keys, const Point<float>& position)
 
 	navCom.push_back({{ KeyPress::leftKey, {} }, -1});
 	navCom.push_back({{ KeyPress::rightKey, {} }, 1});
-	navCom.push_back({{ KeyPress::upKey, {} }, BeginPos});
-	navCom.push_back({{ KeyPress::downKey, {} }, EndPos});
-	navCom.push_back({{ KeyPress::homeKey, {} }, BeginPos});
-	navCom.push_back({{ KeyPress::endKey, {} }, EndPos});
+	navCom.push_back({{ KeyPress::upKey, {} }, multiline ? PrevLine : BeginPos});
+	navCom.push_back({{ KeyPress::downKey, {} }, multiline ? NextLine : EndPos});
+	navCom.push_back({{ KeyPress::homeKey, {} }, LineStart});
+	navCom.push_back({{ KeyPress::endKey, {} }, LineEnd});
 	navCom.push_back({{ KeyPress::pageUpKey, {} }, BeginPos});
 	navCom.push_back({{ KeyPress::pageDownKey, {} }, EndPos});
 	navCom.push_back({{ KeyPress::leftKey, ctrl }, BeginPos});
@@ -183,18 +191,15 @@ void Label::paint(Graphics& g)
 {
 	g.setFillColor(0xFF555555);
 	g.fillAll();
-	g.setStrokeColor(Colors::white);
-	g.strokeFittedText(text, getLocalBounds(), StyledText::getRiveTextAlign(alignment));
 
 	if(!downCursor.getSelection(dragCursor).isEmpty())
 	{
-		auto b1 = downCursor.getPosition();
-		auto b2 = dragCursor.getPosition();
+		auto selections = downCursor.getSelectionRectangles(dragCursor);
 
-		auto selectionBounds = b1.withWidth(0.0f).smallestContainingRectangle(b2.withWidth(0.0f));
+		g.setFillColor(0xFF888888);
 
-		g.setFillColor(Colors::white.withAlpha(0.3f));
-		g.fillRoundedRect(selectionBounds.enlarged(1.0f, 2.0f), 1.0f);
+		for(auto& s: selections)
+			g.fillRoundedRect(s.enlarged(0.0f, 6.0f), 1.0f);
 	}
 
 	auto& cTouse = dragCursor ? dragCursor : downCursor;
@@ -203,8 +208,13 @@ void Label::paint(Graphics& g)
 	{
 		auto b = cTouse.getPosition();
 		g.setFillColor(Colors::white.withAlpha(0.5f * std::cos(alpha) + 0.5f));
-		g.fillRect(b.enlarged(0.0f, 2.0f).translated(-2.0f, 0.0f));
+		g.fillRect(b.enlarged(0.0f, 4.0f).translated(-2.0f, 0.0f));
 	}
+
+	g.setStrokeColor(Colors::white);
+	g.strokeFittedText(text, getLocalBounds(), StyledText::getRiveTextAlign(alignment));
+
+	
 }
 
 void Label::resized()
@@ -215,35 +225,44 @@ void Label::resized()
 		return;
 
 	b = b.reduced(padding);
-	b = b.withSizeKeepingCentre(b.getWidth(), fontSize);
 
-
-	baseLineY = b.getY();
-	text.layout (b, alignment);
+	if(!multiline)
+		b = b.withSizeKeepingCentre(b.getWidth(), fontSize);
+	
+	auto baseLineY = b.getY();
+	lineInformation = text.layout (b, alignment);
 
 	xPosRanges.clear();
-        
-	float lastPos = 0.0f;
-	float nextPos = 0.0f;
+	
 
 	if(!text.getGlyphs().empty())
 	{
 		auto first = text.getGlyphs()[0].bounds().left();
-        
-		if(auto p = text.getParagraph(0))
+
+		int lineNumber = 0;
+
+		while(auto p = text.getParagraph(lineNumber))
 		{
+			float lastPos = 0.0f;
+			float nextPos = 0.0f;
+
+			Array<Range<float>> xPos;
+
 			for(auto& r: p->runs)
 			{
 				for(auto& x: r.xpos)
 				{
 					lastPos = nextPos;
 					nextPos = x;
-					xPosRanges.add({lastPos + first, nextPos + first});
+					xPos.add({lastPos + first, nextPos + first});
 				}
 			}
-		}
 
-		xPosRanges.remove(0);
+			xPos.remove(0);
+
+			xPosRanges.add(xPos);
+			lineNumber++;
+		}
 	}
         
 	repaint();
@@ -403,23 +422,38 @@ bool Label::Cursor::updateFromMouseEvent(const MouseEvent& e)
 	auto mousePos = e.getPosition();
 	auto lp = mousePos - tl;
 
+	lineNumber = 0;
+
+	for(int i = 0; i < parent.lineInformation.size(); i++)
+	{
+		if(lp.getY() > parent.lineInformation[i].first)
+		{
+			lineNumber = i;
+		}
+	}
+	
 	if(parent.content.isEmpty())
 		return moveToStart();
 
-	if(parent.xPosRanges[0].getStart() > lp.getX())
+	auto xPos = parent.getXPositions(lineNumber);
+
+	if(xPos[0].getStart() > lp.getX())
 		return moveToStart();
 
 	int posIndex = 0;
 
-	if(parent.xPosRanges.getLast().getEnd() < lp.getX())
+	if(xPos.getLast().getEnd() < lp.getX())
 		return moveToEnd();
 	         
-	for(auto& p: parent.xPosRanges)
+	for(auto& p: xPos)
 	{
 		if(p.contains(lp.getX()))
 		{
 			auto normPos = (lp.getX() - p.getStart()) / (p.getLength());
 			auto newIndex = normPos > 0.5 ? posIndex + 1 : posIndex;
+
+			newIndex += parent.lineInformation[lineNumber].second.getStart();
+
 			return moveTo(newIndex);
 		}
 
@@ -431,10 +465,12 @@ bool Label::Cursor::updateFromMouseEvent(const MouseEvent& e)
 
 Rectangle<float> Label::Cursor::getPosition() const
 {
-	Rectangle<float> area(0.0, parent.baseLineY, 2.0f, parent.fontSize);
+	Rectangle<float> area(0.0, parent.lineInformation[lineNumber].first, 2.0f, parent.fontSize);
 
 	if(parent.content.isEmpty())
 	{
+		area.setY(parent.padding);
+
 		switch(parent.alignment)
 		{
 		case StyledText::left: area.setX(parent.padding); break;
@@ -446,11 +482,15 @@ Rectangle<float> Label::Cursor::getPosition() const
 		return area;
 	}
 
-	if(isPositiveAndBelow(charIndex, parent.xPosRanges.size()))
-		area.setX(parent.xPosRanges[charIndex].getStart());
+	auto xpos = parent.xPosRanges[lineNumber];
+
+	auto indexInLine = charIndex - parent.lineInformation[lineNumber].second.getStart();
+
+	if(isPositiveAndBelow(indexInLine, xpos.size()))
+		area.setX(xpos[indexInLine].getStart());
 			    
 	else
-		area.setX(parent.xPosRanges.getLast().getEnd());
+		area.setX(xpos.getLast().getEnd());
 
 	return area;
 }
@@ -459,6 +499,7 @@ bool Label::Cursor::moveTo(const Cursor& other)
 {
 	auto prev = charIndex;
 	charIndex = other.charIndex;
+	lineNumber = other.lineNumber;
 	return prev != charIndex;
 }
 
@@ -466,13 +507,29 @@ bool Label::Cursor::moveTo(int pos)
 {
 	auto prev = charIndex;
 	charIndex = jlimit(0, parent.content.length(), pos);
+
+	updateLineNumber();
+
 	return prev != charIndex;
 }
 
 bool Label::Cursor::move(int delta)
 {
+	if(delta == LineEnd)
+		return moveToEndOfLine();
+	if(delta == LineStart)
+		return moveToStartOfLine();
+	if(delta == NextLine)
+		return moveLine(1);
+	if(delta == PrevLine)
+		return moveLine(-1);
+
 	auto prev = charIndex;
+
 	charIndex = jlimit(0, parent.content.length(), charIndex + delta);
+
+	updateLineNumber();
+
 	return prev != charIndex;
 }
 
