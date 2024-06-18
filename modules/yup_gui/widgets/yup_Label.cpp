@@ -271,7 +271,7 @@ void Label::resized()
 void Label::setFont(const yup::Font& f, float newFontSize)
 {
 	font = f;
-	fontSize = newFontSize;
+	fontSize = newFontSize * getScaleDpi();
 	rebuildText();
 }
 

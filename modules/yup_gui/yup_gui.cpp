@@ -64,6 +64,8 @@
 #include "native/yup_Windowing_glfw.cpp"
 #include "native/yup_Windows.cpp"
 
+#include "native/yup_macOS.mm"
+
 //==============================================================================
 #include "application/yup_Application.cpp"
 #include "application/yup_Clipboard.cpp"

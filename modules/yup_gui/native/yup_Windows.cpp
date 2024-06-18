@@ -102,6 +102,6 @@ void MouseCursor::setCursor(void* nativeHandle)
     SetCursor(c);
 }
 
-}
+} // namespace yup
 
 #endif
