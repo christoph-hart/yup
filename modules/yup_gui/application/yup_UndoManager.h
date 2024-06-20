@@ -32,6 +32,8 @@ namespace yup
  *  - templated perform() function using a weak-referenceable object and a lambda
  *  - automatic lifetime management of objects in the undo history
  *  - can be enabled / disabled.
+ *  - can be temporarily suspended with RAII using the ScopedSuspender class
+ *  - the grouping of the actions can be temporarily suspended using the ScopedActionIsolator class
  *
  */
 class JUCE_API UndoManager: private juce::Timer
@@ -92,8 +94,26 @@ public:
         UndoManager& um;
     };
 
+    struct ScopedDeactivator
+    {
+	    ScopedDeactivator(UndoManager& um_):
+          um(um_)
+	    {
+            prevValue = um.suspended.get();
+		    um.suspended = true;
+	    }
+
+        ~ScopedDeactivator()
+	    {
+		    um.suspended = prevValue;
+	    }
+
+        UndoManager& um;
+        bool prevValue;
+    };
+
     /** Create a new UndoManager. It will also start the timer. */
-    UndoManager();
+    UndoManager(bool startTimer=true);
 
     /** Adds a new action to the timeline and performs it with isUndo=false.
      *
@@ -121,7 +141,20 @@ public:
     /** This will enable the undo manager. If it is enabled, the timer will run. Disabling the undomanager will clear the history and stop the timer. */
     void setEnabled(bool shouldBeEnabled);
 
+    /** This will disable the grouping of the messages (useful for testing in a non UI mode). */
+    void setSynchronousMode(bool shouldBeSynchronous)
+    {
+	    isSynchronous = shouldBeSynchronous;
+    }
+
+    void beginNewTransaction()
+    {
+	    flushCurrentAction();
+    }
+
 private:
+
+    bool isSynchronous = false;
 
     /** this is the number of items kept in the history. */
     static constexpr int HistorySize = 30;
@@ -176,6 +209,11 @@ private:
     // the position in the timeline for the next actions.
     int nextUndoAction = -1;
     int nextRedoAction = -1;
+
+    // The undomanager can be temporarily suspended using a ScopedSuspender
+
+    ThreadLocalValue<bool> suspended;
+    
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(UndoManager);
 };

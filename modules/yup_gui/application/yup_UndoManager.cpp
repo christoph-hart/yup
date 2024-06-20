@@ -21,16 +21,24 @@
 
 namespace yup
 {
-UndoManager::UndoManager()
+UndoManager::UndoManager(bool startTimer)
 {
-	setEnabled(true);
+	if(startTimer)
+		setEnabled(true);
+	else
+		currentlyBuiltAction = new CoallascatedItem();
 }
 
 bool UndoManager::perform(ActionBase::Ptr f)
 {
+	if(isSynchronous)
+		flushCurrentAction();
+
 	if(f->call(false))
 	{
-		dynamic_cast<CoallascatedItem*>(currentlyBuiltAction.get())->childItems.add(f);
+		if(!suspended.get())
+			dynamic_cast<CoallascatedItem*>(currentlyBuiltAction.get())->childItems.add(f);
+
 		return true;
 	}
 
