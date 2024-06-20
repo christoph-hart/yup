@@ -60,6 +60,8 @@ public:
 
     // ===============================================================================
 
+    void onTextInput(const String& textInput) override { insert(textInput); }
+
     void keyDown(const KeyPress& keys, const Point<float>& position) override;
     void mouseDoubleClick(const MouseEvent& e) override;
     void mouseDown(const MouseEvent& event) override;
@@ -73,15 +75,14 @@ public:
 
     // ===============================================================================
 
+    void setReadOnly(bool shouldBeReadOnly);
+
     void setText(const juce::String& newText, juce::NotificationType notifyListeners);
     void setPadding(float newPadding);
     void setFont(const yup::Font& f, float newFontSize=16.0f);
     void setJustification(StyledText::Alignment newAlignment);
 
-    void setMultiline(bool shouldBeMultiline)
-    {
-	    multiline = shouldBeMultiline;
-    }
+    void setMultiline(bool shouldBeMultiline);
 
     // ===============================================================================
 
@@ -267,6 +268,7 @@ private:
 
     bool isBeingEdited = false;
 
+    bool readOnly = false;
     bool multiline = false;
 
     juce::Array<Range<float>> getXPositions(int lineNumber) const

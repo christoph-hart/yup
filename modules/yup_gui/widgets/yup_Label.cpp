@@ -33,7 +33,7 @@ Label::Label(const String& id):
 	viewport.setResizeOnScroll(true);
 	MouseCursor mc(MouseCursor::StandardCursorTypes::IBeamCursor);
 	setMouseCursor(mc);
-	setWantsKeyboardFocus(true);
+	setWantsKeyboardFocus(KeyboardFocusMode::WantsTextInputCallback);
 	startTimer(15);
 }
 
@@ -70,6 +70,15 @@ void Label::timerCallback()
 	}
 }
 
+void Label::setReadOnly(bool shouldBeReadOnly)
+{
+	if(readOnly != shouldBeReadOnly)
+	{
+		readOnly = shouldBeReadOnly;
+		setWantsKeyboardFocus(shouldBeReadOnly ? KeyboardFocusMode::WantsTextInputCallback : KeyboardFocusMode::WantsNoFocus);
+	}
+}
+
 void Label::setPadding(float newPadding)
 {
 	padding = newPadding * getScaleDpi();
@@ -78,6 +87,9 @@ void Label::setPadding(float newPadding)
 
 void Label::keyDown(const KeyPress& keys, const Point<float>& position)
 {
+	if(readOnly)
+		return;
+
 	if(keys.getKey() == KeyPress::escapeKey)
 	{
 		leaveFocus();
@@ -142,16 +154,6 @@ void Label::keyDown(const KeyPress& keys, const Point<float>& position)
 		return deleteSelection(1);
 	if(keys.getKey() == KeyPress::backspaceKey)
 		return deleteSelection(-1);
-
-	auto code = keys.getKey();
-
-	if(isPositiveAndBelow(code, 127) && CharacterFunctions::isPrintable((char)code))
-	{
-		if(!keys.getModifiers().isShiftDown())
-			code = CharacterFunctions::toLowerCase((char)code);
-
-		insert((char)code);
-	}
 }
 
 void Label::mouseDoubleClick(const MouseEvent& e)
@@ -261,14 +263,7 @@ void Label::paint(Graphics& g)
 	}
 
 	g.setStrokeColor(Colors::white);
-	//g.strokeFittedText(text, viewport.getViewport(), StyledText::getRiveTextAlign(alignment));
-
-
-	
-
 	g.strokeRawPath(path);
-	
-	
 }
 
 void Label::resized()
@@ -350,6 +345,11 @@ void Label::setJustification(StyledText::Alignment newAlignment)
 {
 	alignment = newAlignment;
 	rebuildText();
+}
+
+void Label::setMultiline(bool shouldBeMultiline)
+{
+	multiline = shouldBeMultiline;
 }
 
 void Label::addListener(Listener* l)

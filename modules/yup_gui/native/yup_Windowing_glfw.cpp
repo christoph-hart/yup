@@ -341,7 +341,7 @@ public:
 
     //==============================================================================
 
-    void setFocusedComponent (Component* comp) override;
+    void setFocusedComponent (Component* comp, bool isTextInput) override;
     Component* getFocusedComponent() const override;
 
     //==============================================================================
@@ -368,6 +368,7 @@ public:
     void handleMoved (int xpos, int ypos);
     void handleResized (int width, int height);
     void handleFocusChanged (bool gotFocus);
+    void handleTextInput(const String& textInput);
     void handleUserTriedToCloseWindow();
 
     //==============================================================================
@@ -382,6 +383,8 @@ public:
     static void glfwMousePress (GLFWwindow* window, int button, int action, int mods);
     static void glfwMouseScroll (GLFWwindow* window, double xoffset, double yoffset);
     static void glfwKeyPress (GLFWwindow* window, int key, int scancode, int action, int mods);
+
+    static void glfwTextInput(GLFWwindow* window, unsigned int codePoint);
 
 private:
     void updateComponentUnderMouse (const MouseEvent& event);
@@ -711,12 +714,21 @@ float GLFWComponentNative::getOpacity() const
 
 //==============================================================================
 
-void GLFWComponentNative::setFocusedComponent (Component* comp)
+void GLFWComponentNative::setFocusedComponent (Component* comp, bool isTextInput)
 {
     if (lastComponentFocused != nullptr)
         ; // TODO
 
     lastComponentFocused = comp;
+
+    if(isTextInput)
+    {
+	    glfwSetCharCallback(window, lastComponentFocused != nullptr ? glfwTextInput : nullptr);
+    }
+    else
+    {
+	    glfwSetCharCallback(window, nullptr);
+    }
 }
 
 Component* GLFWComponentNative::getFocusedComponent() const
@@ -1134,6 +1146,12 @@ void GLFWComponentNative::handleFocusChanged (bool gotFocus)
     //DBG ("handleFocusChanged: " << (gotFocus ? 1 : 0));
 }
 
+void GLFWComponentNative::handleTextInput(const String& textInput)
+{
+    if(auto fc = getFocusedComponent())
+        fc->onTextInput(textInput);
+}
+
 void GLFWComponentNative::handleUserTriedToCloseWindow()
 {
     component.internalUserTriedToCloseWindow();
@@ -1255,6 +1273,17 @@ void GLFWComponentNative::glfwKeyPress (GLFWwindow* window, int key, int scancod
         mods &= ~convertKeyToModifier (key);
         nativeComponent->handleKeyUp (toKeyPress (key, scancode, mods), cursorPosition);
     }
+}
+
+void GLFWComponentNative::glfwTextInput(GLFWwindow* window, unsigned codePoint)
+{
+    CharPointer_UTF32 ptr(&codePoint);
+
+    auto s = String::createStringFromData(&codePoint, sizeof(codePoint));
+
+    auto* nativeComponent = static_cast<GLFWComponentNative*> (glfwGetWindowUserPointer (window));
+
+    nativeComponent->handleTextInput(s);
 }
 
 //==============================================================================

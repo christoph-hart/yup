@@ -44,6 +44,15 @@ private:
 
 //==============================================================================
 
+/** This enum can be passed into setWantsKeyboardFocus() and determines how the keystrokes should
+ *  be interpreted by the component (as raw key up / down or as text input). */
+enum class KeyboardFocusMode
+{
+    WantsNoFocus,
+	WantsKeyUpDownCallback, 
+    WantsTextInputCallback
+};
+
 class JUCE_API Component
 {
 public:
@@ -163,7 +172,7 @@ public:
     void toBack();
 
     //==============================================================================
-    void setWantsKeyboardFocus (bool wantsFocus);
+    void setWantsKeyboardFocus (KeyboardFocusMode focusMode);
 
     void takeFocus();
     void leaveFocus();
@@ -209,6 +218,11 @@ public:
     virtual void keyDown (const KeyPress& keys, const Point<float>& position);
     virtual void keyUp (const KeyPress& keys, const Point<float>& position);
 
+    /** This callback will be called if you have grabbed the keyboard focus with the TextInputMode argument. */
+    virtual void onTextInput(const String& textInput)
+    {
+    }
+
 private:
     void internalPaint (Graphics& g, bool renderContinuous);
     void internalMouseEnter (const MouseEvent& event);
@@ -250,6 +264,7 @@ private:
         bool isFullScreen       : 1;
         bool unclippedRendering : 1;
         bool wantsKeyboardFocus : 1;
+        bool wantsTextInput     : 1;
     };
 
     union

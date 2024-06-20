@@ -468,21 +468,27 @@ void Component::toBack()
 
 //==============================================================================
 
-void Component::setWantsKeyboardFocus (bool wantsFocus)
+void Component::setWantsKeyboardFocus (KeyboardFocusMode focusMode)
 {
-    options.wantsKeyboardFocus = wantsFocus;
+    options.wantsKeyboardFocus = focusMode != KeyboardFocusMode::WantsNoFocus;
+    options.wantsTextInput = focusMode == KeyboardFocusMode::WantsTextInputCallback;
 }
 
 void Component::takeFocus()
 {
-    if (auto nativeComponent = getNativeComponent())
-        nativeComponent->setFocusedComponent (this);
+    if(options.wantsKeyboardFocus)
+    {
+	    if (auto nativeComponent = getNativeComponent())
+	    {
+		    nativeComponent->setFocusedComponent (this, options.wantsTextInput);
+	    }
+    }
 }
 
 void Component::leaveFocus()
 {
     if (auto nativeComponent = getNativeComponent())
-        nativeComponent->setFocusedComponent (nullptr);
+        nativeComponent->setFocusedComponent (nullptr, false);
 }
 
 bool Component::hasFocus() const
