@@ -291,6 +291,21 @@ public:
     */
     bool isInitialising() const noexcept                        { return stillInitialising; }
 
+    void registerPopupMenuCallback(const std::function<bool(int)>& f)
+    {
+	    nativePopupMenuCallback = f;
+    }
+
+    std::function<bool(int)> nativePopupMenuCallback;
+
+    void callPopupMenuCallback(int result)
+    {
+	    if(nativePopupMenuCallback)
+            nativePopupMenuCallback(result);
+
+        nativePopupMenuCallback = {};
+    }
+
 
     //==============================================================================
    #ifndef DOXYGEN

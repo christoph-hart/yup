@@ -134,6 +134,15 @@ public:
             {
                 dispatchMessages();
             }
+            else if (m.message == WM_COMMAND)
+            {
+                auto result = m.wParam;
+                
+                if (auto* app = JUCEApplicationBase::getInstance())
+                {
+                    app->callPopupMenuCallback(result);
+                }
+            }
             else if (m.message == WM_QUIT)
             {
                 if (auto* app = JUCEApplicationBase::getInstance())

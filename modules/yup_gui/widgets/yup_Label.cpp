@@ -161,8 +161,34 @@ void Label::mouseDoubleClick(const MouseEvent& e)
 
 void Label::mouseDown(const MouseEvent& event)
 {
-	alpha = 0.0f;
+	if(event.isRightButtonDown())
+	{
+		NativePopupMenu menu(*this);
 
+		menu.addItem(Cut, "Cut", "Ctrl+X", false, !getSelection().isEmpty());
+		menu.addItem(Copy, "Copy", "Ctrl+C", false, !getSelection().isEmpty());
+		menu.addItem(Paste, "Paste", "Ctrl+V", false, !readOnly);
+		menu.addSeparator();
+		menu.addItem(SelectAll, "Select all", "Ctrl+A");
+
+		if(!readOnly)
+		{
+			menu.addSeparator();
+			menu.addItem(Undo, "Undo", "Ctrl+Z", false);
+			menu.addItem(Redo, "Redo", "Ctrl+Y");
+		}
+
+		menu.show([this](int result)
+		{
+			this->perform(result);
+			return true;
+		});
+
+		return;
+	}
+	
+	alpha = 0.0f;
+	
 	if(!hasFocus())
 	{
 		isBeingEdited = true;

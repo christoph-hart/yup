@@ -102,6 +102,57 @@ void MouseCursor::setCursor(void* nativeHandle)
     SetCursor(c);
 }
 
+// NativePopupMenu
+
+struct NativePopupMenu::Pimpl
+{
+	Pimpl(Component& parent)
+	{
+		menuHandle = CreatePopupMenu();
+		hwnd = (HWND)parent.getNativeComponent()->getNativeHandle();
+	}
+
+    void show(const std::function<bool(int)>& resultCallback)
+	{
+		if(auto app = JUCEApplicationBase::getInstance())
+		{
+			app->registerPopupMenuCallback(resultCallback);
+		}
+
+		POINT pt;
+		GetCursorPos(&pt);
+        TrackPopupMenu(menuHandle, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwnd, NULL);
+
+		SetFocus (NULL);
+
+		DestroyMenu(menuHandle);
+	}
+
+    void addItem(int itemId, const String& text, const String& shortCutString={}, bool isTicked=false, bool isActive=true)
+	{
+		auto t = text;
+
+		if(shortCutString.isNotEmpty())
+			t << "\t" << shortCutString;
+
+		AppendMenu(menuHandle, MF_STRING, itemId, t.toStdString().c_str());
+
+		if(isTicked)
+			CheckMenuItem(menuHandle, itemId, MF_BYCOMMAND | MF_CHECKED);
+
+		if(!isActive)
+			EnableMenuItem(menuHandle, itemId, MF_BYCOMMAND | MF_DISABLED);
+	}
+
+    void addSeparator()
+	{
+		AppendMenu(menuHandle, MF_SEPARATOR, 0, NULL); 
+	}
+
+	HMENU menuHandle;
+	HWND hwnd;
+};
+
 }
 
 #endif
