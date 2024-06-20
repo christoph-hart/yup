@@ -575,6 +575,9 @@ void Component::internalMouseEnter (const MouseEvent& event)
     if (! isVisible())
         return;
 
+    if(callMouseListeners([](MouseListener& l, const MouseEvent& e){ return l.mouseEnter(e); }, event))
+        return;
+
     mouseEnter (event);
 }
 
@@ -583,6 +586,9 @@ void Component::internalMouseExit (const MouseEvent& event)
     updateMouseCursor();
 
     if (! isVisible())
+        return;
+
+    if(callMouseListeners([](MouseListener& l, const MouseEvent& e){ return l.mouseExit(e); }, event))
         return;
 
     mouseExit (event);
@@ -601,18 +607,20 @@ void Component::internalMouseDown (const MouseEvent& event)
 
     if(delta < 200)
     {
+        if(callMouseListeners([](MouseListener& l, const MouseEvent& e){ return l.mouseDoubleClick(e); }, event))
+			return;
+
 	    mouseDoubleClick(event);
     }
     else
     {
+        if(callMouseListeners([](MouseListener& l, const MouseEvent& e){ return l.mouseDown(e); }, event))
+			return;
+
 	    mouseDown (event);
     }
 
     lastClick = now;
-
-
-
-    
 }
 
 void Component::internalMouseMove (const MouseEvent& event)
@@ -621,6 +629,9 @@ void Component::internalMouseMove (const MouseEvent& event)
 
     if (! isVisible())
         return;
+
+    if(callMouseListeners([](MouseListener& l, const MouseEvent& e){ return l.mouseMove(e); }, event))
+			return;
 
     mouseMove (event);
 }
@@ -632,6 +643,9 @@ void Component::internalMouseDrag (const MouseEvent& event)
     if (! isVisible())
         return;
 
+    if(callMouseListeners([](MouseListener& l, const MouseEvent& e){ return l.mouseDrag(e); }, event))
+			return;
+
     mouseDrag (event);
 }
 
@@ -642,6 +656,9 @@ void Component::internalMouseUp (const MouseEvent& event)
     if (! isVisible())
         return;
 
+    if(callMouseListeners([](MouseListener& l, const MouseEvent& e){ return l.mouseUp(e); }, event))
+			return;
+
     mouseUp (event);
 }
 
@@ -649,6 +666,9 @@ void Component::internalMouseWheel (const MouseEvent& event, const MouseWheelDat
 {
     if (! isVisible())
         return;
+
+    if(callMouseListeners([wheelData](MouseListener& l, const MouseEvent& e){ return l.mouseWheel(e, wheelData); }, event))
+			return;
 
     mouseWheel (event, wheelData);
 }
@@ -691,5 +711,19 @@ void Component::internalUserTriedToCloseWindow()
 void Component::updateMouseCursor()
 {
     cursor.setCursor(getNativeHandle());
+}
+
+bool Component::callMouseListeners(const std::function<bool(MouseListener&, const MouseEvent&)>& f, const MouseEvent& e)
+{
+	for(auto ml: mouseListeners)
+	{
+		if(f(*ml, e))
+			return true;
+	}
+
+    if(getParentComponent() == nullptr)
+        return false;
+
+	return getParentComponent()->callMouseListeners(f, e);
 }
 } // namespace yup

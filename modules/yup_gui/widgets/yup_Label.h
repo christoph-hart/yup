@@ -92,6 +92,10 @@ public:
 
 private:
 
+    rive::rcp<rive::RenderPath> path;
+
+    Scrollbar scrollbar;
+    Scrollbar::InternalViewport viewport;
     void insert(const String& text);
     void insert(char textChar);
     void deleteSelection(int delta);
@@ -175,46 +179,13 @@ private:
         bool moveTo(int pos);
         bool move(int delta);
 
-        bool moveLine(int delta)
+        bool moveLine(int delta);
+
+        void scrollToShow()
         {
-            auto xPos = getPosition().getX();
-
-            auto prev = charIndex;
-
-            auto newLineNumber = jlimit(0, parent.lineInformation.size()-1, lineNumber + delta);
-
-            
-
-            auto positionsInNewLine = parent.xPosRanges[newLineNumber];
-
-            if(xPos > positionsInNewLine.getLast().getEnd())
-            {
-	            charIndex = parent.lineInformation[newLineNumber].second.getEnd()-1;
-            }
-            else
-            {
-	            for(int i = 0; i < positionsInNewLine.size(); i++)
-	            {
-		            if(positionsInNewLine[i].contains(xPos))
-		            {
-	                    auto normPos = (xPos - positionsInNewLine[i].getStart()) / positionsInNewLine[i].getLength();
-
-	                    if(normPos > 0.5)
-	                        i++;
-
-			            charIndex = parent.lineInformation[newLineNumber].second.getStart() + i;
-	                    break;
-		            }
-	            }
-            }
-
-            
-
-            lineNumber = newLineNumber;
-
-            return prev != charIndex;
+            auto yPos = parent.lineInformation[lineNumber].first;
+            parent.viewport.scrollToShow({yPos, yPos + parent.fontSize * 1.5f});
         }
-
 
         bool updateFromMouseEvent(const MouseEvent& e);
         Rectangle<float> getPosition() const;

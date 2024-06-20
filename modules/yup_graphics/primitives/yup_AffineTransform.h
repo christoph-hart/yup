@@ -478,9 +478,30 @@ public:
         };
     }
 
+    AffineTransform inverted() const noexcept
+    {
+	    double determinant = getDeterminant();
+
+	    if (! approximatelyEqual (determinant, 0.0))
+	    {
+	        determinant = 1.0 / determinant;
+
+            auto dst00 = (float) ( m[4] * determinant);
+	        auto dst10 = (float) (-m[3] * determinant);
+	        auto dst01 = (float) (-m[1] * determinant);
+	        auto dst11 = (float) ( m[0] * determinant);
+
+	        return { dst00, dst01, -m[2] * dst00 - m[5] * dst01,
+	                 dst10, dst11, -m[2] * dst10 - m[5] * dst11 };
+	    }
+
+	    // singularity..
+	    return *this;
+    }
+
     //==============================================================================
     // TODO - doxygen
-    [[nodiscard]] constexpr float getDeterminant() const noexcept
+    [[nodiscard]] float getDeterminant() const noexcept
     {
         return (scaleX * scaleY) - (shearX * shearY);
     }

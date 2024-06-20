@@ -22,6 +22,26 @@
 namespace yup
 {
 
+class JUCE_API MouseListener
+{
+public:
+
+    virtual ~MouseListener() {};
+
+    virtual bool mouseEnter (const MouseEvent& event) { return false; };
+    virtual bool mouseExit (const MouseEvent& event) { return false; };
+    virtual bool mouseDoubleClick(const MouseEvent& event) { return false; };
+    virtual bool mouseDown (const MouseEvent& event) { return false; };
+    virtual bool mouseMove (const MouseEvent& event) { return false; };
+    virtual bool mouseDrag (const MouseEvent& event) { return false; };
+    virtual bool mouseUp (const MouseEvent& event) { return false; };
+    virtual bool mouseWheel (const MouseEvent& event, const MouseWheelData& wheelData) { return false; };
+
+private:
+
+    JUCE_DECLARE_WEAK_REFERENCEABLE(MouseListener);
+};
+
 //==============================================================================
 
 class JUCE_API Component
@@ -160,6 +180,18 @@ public:
     const NamedValueSet& getProperties() const;
 
     //==============================================================================
+
+    void addMouseListener(MouseListener* m)
+    {
+        mouseListeners.addIfNotAlreadyThere(m);
+    }
+
+    void removeMouseListener(MouseListener* m)
+    {
+	    mouseListeners.removeAllInstancesOf(m);
+    }
+
+    //==============================================================================
     virtual void paint (Graphics& g);
     virtual void paintOverChildren (Graphics& g);
 
@@ -225,6 +257,10 @@ private:
         uint32 optionsValue;
         Options options;
     };
+
+    bool callMouseListeners(const std::function<bool(MouseListener&, const MouseEvent&)>& f, const MouseEvent& e);
+
+    Array<WeakReference<MouseListener>> mouseListeners;
 
     uint32 lastClick = 0;
 

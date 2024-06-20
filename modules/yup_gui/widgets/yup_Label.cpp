@@ -25,8 +25,12 @@ Label::Label(const String& id):
 	Component(id.isEmpty() ? "Label" : id),
 	updater(*this),
 	downCursor(*this),
-	dragCursor(*this)
+	dragCursor(*this),
+	scrollbar(Scrollbar::Type::verticalScrollbar, *this),
+	viewport(scrollbar)
 {
+
+	viewport.setResizeOnScroll(true);
 	MouseCursor mc(MouseCursor::StandardCursorTypes::IBeamCursor);
 	setMouseCursor(mc);
 	setWantsKeyboardFocus(true);
@@ -62,13 +66,13 @@ void Label::timerCallback()
 	if(dragCursor)
 	{
 		alpha += 0.1f;
-		repaint();
+		repaint(dragCursor.getPosition().enlarged(3.0f));
 	}
 }
 
 void Label::setPadding(float newPadding)
 {
-	padding = newPadding;
+	padding = newPadding * getScaleDpi();
 	rebuildText();
 }
 
@@ -187,11 +191,30 @@ void Label::mouseDrag(const MouseEvent& event)
 	repaint();
 }
 
+void convertRawPathToRenderPath (const rive::RawPath& input, rive::RenderPath* output, const AffineTransform& transform)
+{
+    auto newInput = input.morph ([&transform](auto point)
+    {
+        transform.transformPoints (point.x, point.y);
+        return point;
+    });
+
+    newInput.addTo (output);
+}
+
 void Label::paint(Graphics& g)
 {
 	g.setFillColor(0xFF555555);
-	g.fillAll();
+	g.fillRoundedRect(getLocalBounds(), 3);
 
+	if(downCursor)
+	{
+		g.setStrokeColor(Colors::white.withAlpha(0.4f));
+		g.strokeRoundedRect(getLocalBounds().reduced(2.0f), 2.0f);
+	}
+
+	g.setTransform(viewport.getTransform());
+	
 	if(!downCursor.getSelection(dragCursor).isEmpty())
 	{
 		auto selections = downCursor.getSelectionRectangles(dragCursor);
@@ -212,28 +235,46 @@ void Label::paint(Graphics& g)
 	}
 
 	g.setStrokeColor(Colors::white);
-	g.strokeFittedText(text, getLocalBounds(), StyledText::getRiveTextAlign(alignment));
+	//g.strokeFittedText(text, viewport.getViewport(), StyledText::getRiveTextAlign(alignment));
 
+
+	
+
+	g.strokeRawPath(path);
+	
 	
 }
 
 void Label::resized()
 {
-	auto b = getLocalBounds();
+	Rectangle<float> b(0.0f, 0.f, getWidth(), 10000.0f);
 
-	if(!b.area())
-		return;
-
-	b = b.reduced(padding);
-
-	if(!multiline)
-		b = b.withSizeKeepingCentre(b.getWidth(), fontSize);
-	
 	auto baseLineY = b.getY();
-	lineInformation = text.layout (b, alignment);
+	lineInformation = text.layout (b.reduced(padding), alignment);
+	
+	{
+		auto factory = getNativeComponent()->getFactory();
+		path = factory->makeEmptyRenderPath();
+
+	    std::size_t totalPathSize = 0;
+	    for (const auto& rawPath : text.getGlyphs())
+	        totalPathSize += rawPath.verbs().size();
+
+		auto transform = viewport.getTransform();
+		auto visibleArea = viewport.getVisibleArea();
+
+		transform = transform.translated(getX(), getY());
+
+	    for (const auto& rawPath : text.getGlyphs())
+	    {
+			Rectangle<float> rb(rawPath.bounds());
+			
+			if(visibleArea.contains(rb.getCenter()))
+				convertRawPathToRenderPath (rawPath, path.get(), transform);
+	    }
+	}
 
 	xPosRanges.clear();
-	
 
 	if(!text.getGlyphs().empty())
 	{
@@ -264,6 +305,10 @@ void Label::resized()
 			lineNumber++;
 		}
 	}
+
+	auto realHeight = lineInformation.getLast().first + fontSize;
+
+	viewport.setContentArea(getWidth(), realHeight);
         
 	repaint();
 }
@@ -271,7 +316,7 @@ void Label::resized()
 void Label::setFont(const yup::Font& f, float newFontSize)
 {
 	font = f;
-	fontSize = newFontSize;
+	fontSize = newFontSize * getScaleDpi();
 	rebuildText();
 }
 
@@ -317,6 +362,7 @@ void Label::insert(const String& text)
 
 		l.downCursor.moveTo(isUndo ? left : r);
 		l.dragCursor.moveTo(r);
+		l.dragCursor.scrollToShow();
             
 		l.alpha = 0.0f;
 
@@ -347,6 +393,8 @@ void Label::navigate(bool select, int delta)
 
 	if(!select)
 		downCursor.moveTo(dragCursor);
+
+	dragCursor.scrollToShow();
 }
 
 String Label::getSelection() const
@@ -419,7 +467,7 @@ bool Label::Cursor::moveToEnd()
 bool Label::Cursor::updateFromMouseEvent(const MouseEvent& e)
 {
 	auto tl = parent.getBounds().getTopLeft();
-	auto mousePos = e.getPosition();
+	auto mousePos = e.getPosition().transformed(parent.viewport.getTransform().inverted());
 	auto lp = mousePos - tl;
 
 	lineNumber = 0;
@@ -529,6 +577,48 @@ bool Label::Cursor::move(int delta)
 	charIndex = jlimit(0, parent.content.length(), charIndex + delta);
 
 	updateLineNumber();
+
+	return prev != charIndex;
+}
+
+bool Label::Cursor::moveLine(int delta)
+{
+	auto xPos = getPosition().getX();
+
+	auto prev = charIndex;
+
+	auto newLineNumber = jlimit(0, parent.lineInformation.size()-1, lineNumber + delta);
+
+            
+
+	auto positionsInNewLine = parent.xPosRanges[newLineNumber];
+
+	if(xPos > positionsInNewLine.getLast().getEnd())
+	{
+		charIndex = parent.lineInformation[newLineNumber].second.getEnd()-1;
+	}
+	else
+	{
+		for(int i = 0; i < positionsInNewLine.size(); i++)
+		{
+			if(positionsInNewLine[i].contains(xPos))
+			{
+				auto normPos = (xPos - positionsInNewLine[i].getStart()) / positionsInNewLine[i].getLength();
+
+				if(normPos > 0.5)
+					i++;
+
+				charIndex = parent.lineInformation[newLineNumber].second.getStart() + i;
+				break;
+			}
+		}
+	}
+
+            
+
+	lineNumber = newLineNumber;
+
+
 
 	return prev != charIndex;
 }
