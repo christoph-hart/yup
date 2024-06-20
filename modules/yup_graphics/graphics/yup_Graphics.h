@@ -362,6 +362,9 @@ public:
     */
      void strokeFittedText (const StyledText& text, const Rectangle<float>& rect, rive::TextAlign align = rive::TextAlign::center);
 
+    /** Draws a raw path (this is much faster for rendering large amounts of text. */
+    void strokeRawPath(const rive::rcp<rive::RenderPath>& rawPath);
+
     //==============================================================================
     /** Clips the drawing area to the specified rectangle.
 

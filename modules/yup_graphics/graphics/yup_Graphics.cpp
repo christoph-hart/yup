@@ -600,4 +600,19 @@ void Graphics::strokeFittedText (const StyledText& text, const Rectangle<float>&
     renderer.drawPath (path.get(), paint.get());
 }
 
+void Graphics::strokeRawPath(const rive::rcp<rive::RenderPath>& rawPath)
+{
+    const auto& options = currentRenderOptions();
+
+    auto paint = factory.makeRenderPaint();
+    paint->style (rive::RenderPaintStyle::fill);
+
+    if (options.isStrokeColor())
+        paint->color (options.getStrokeColor());
+    else
+        paint->shader (toColorGradient (factory, options.getStrokeColorGradient()));
+    
+    renderer.drawPath (rawPath.get(), paint.get());
+}
+
 } // namespace yup
