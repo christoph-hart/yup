@@ -42,7 +42,10 @@
 
 #else
  #define GLFW_INCLUDE_NONE
+#define GLFW_EXPOSE_NATIVE_WIN32
  #include <GLFW/glfw3.h>
+ #include <GLFW/glfw3native.h>
+
 
 #endif
 
@@ -66,6 +69,7 @@
 
 //==============================================================================
 #include "application/yup_Application.cpp"
+#include "application/yup_ValueTree.cpp"
 #include "application/yup_Clipboard.cpp"
 #include "application/yup_UndoManager.cpp"
 

@@ -59,6 +59,7 @@
 #include "application/yup_Application.h"
 #include "application/yup_Clipboard.h"
 #include "application/yup_UndoManager.h"
+#include "application/yup_ValueTree.h"
 #include "keyboard/yup_KeyModifiers.h"
 #include "keyboard/yup_KeyPress.h"
 #include "mouse/yup_MouseEvent.h"
