@@ -60,6 +60,10 @@ public:
     void mouseMove (const MouseEvent& event) override;
     void mouseDrag (const MouseEvent& event) override;
 
+    var getAllStates() const;
+
+    void setState(const String& state, const var& value);
+
 private:
     void updateScenesFromFile (std::size_t count);
     void pullEventsFromStateMachines();

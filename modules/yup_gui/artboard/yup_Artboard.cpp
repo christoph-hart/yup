@@ -253,6 +253,82 @@ void Artboard::mouseDrag (const MouseEvent& event)
     repaint();
 }
 
+var Artboard::getAllStates() const
+{
+	Array<var> stateList;
+
+	if(!stateMachines.empty())
+	{
+		auto s = stateMachines[0];
+
+		for(int i = 0; i < s->inputCount(); i++)
+		{
+			DynamicObject::Ptr obj = new DynamicObject();
+
+			auto inp = s->input(i);
+
+			obj->setProperty("ID", String(inp->name()));
+
+			if(auto t = dynamic_cast<rive::SMITrigger*>(inp))
+			{
+				obj->setProperty("Type", "Trigger");
+			}
+			else if (auto b = dynamic_cast<rive::SMIBool*>(inp))
+			{
+				obj->setProperty("Type", "Boolean");
+				obj->setProperty("Value", b->value());
+			}
+			else if (auto n = dynamic_cast<rive::SMINumber*>(inp))
+			{
+				obj->setProperty("Type", "Number");
+				obj->setProperty("Value", n->value());
+			}
+                
+			stateList.add(var(obj.get()));
+		}
+	}
+
+	return stateList;
+}
+
+void Artboard::setState(const String& state, const var& value)
+{
+	if(!stateMachines.empty())
+	{
+		auto s = stateMachines[0];
+
+		auto state_ = state.toStdString();
+
+		for(int i = 0; i < s->inputCount(); i++)
+		{
+			auto inp = s->input(i);
+
+			if(inp->name() == state_)
+			{
+				if(auto t = dynamic_cast<rive::SMITrigger*>(inp))
+				{
+					t->fire();
+				}
+				else if (auto b = dynamic_cast<rive::SMIBool*>(inp))
+				{
+					b->value((bool)value);
+				}
+				else if (auto n = dynamic_cast<rive::SMINumber*>(inp))
+				{
+					n->value((float)value);
+				}
+
+				break;
+			}
+		}
+
+		if(auto t = s->getTrigger(state.toStdString()))
+		{
+			t->fire();
+		}
+	}
+}
+
 //==============================================================================
 
 void Artboard::propertyChanged (const String& eventName, const String& propertyName, const var& oldValue, const var& newValue)
