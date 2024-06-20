@@ -153,6 +153,6 @@ struct NativePopupMenu::Pimpl
 	HWND hwnd;
 };
 
-}
+} // namespace yup
 
 #endif

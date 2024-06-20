@@ -60,8 +60,10 @@ wchar_t* Clipboard::ScopedDataAccess::getData()
 
 void Clipboard::ScopedDataAccess::writeString(const String& text)
 {
+#if JUCE_WINDOWS
 	auto bytesNeeded = CharPointer_UTF16::getBytesRequiredFor (text.getCharPointer()) + 4;
 	text.copyToUTF16(getData(), bytesNeeded);
+#endif
 }
 
 String Clipboard::ScopedDataAccess::toString() const
