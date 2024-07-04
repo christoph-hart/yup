@@ -19,33 +19,34 @@
   ==============================================================================
 */
 
-namespace yup {
-
-
-NativePopupMenu::NativePopupMenu(Component& parent)
+namespace yup
 {
-	pimpl = new Pimpl(parent);
+NativePopupMenu::NativePopupMenu (Component& parent)
+{
+    pimpl = new Pimpl (parent);
 }
 
-NativePopupMenu::~NativePopupMenu()
+NativePopupMenu::~NativePopupMenu ()
 {
-	delete pimpl;
+    delete pimpl;
 }
 
-void NativePopupMenu::addSeparator()
+void NativePopupMenu::addSeparator ()
 {
-	pimpl->addSeparator();
+    pimpl->addSeparator();
 }
 
-void NativePopupMenu::addItem(int itemId, const String& text, const String& shortCutString, bool isTicked,
-                              bool isActive)
+void NativePopupMenu::addItem (int itemId,
+                               const String& text,
+                               const String& shortCutString,
+                               bool isTicked,
+                               bool isActive)
 {
-	pimpl->addItem(itemId, text, shortCutString, isTicked, isActive);
+    pimpl->addItem (itemId, text, shortCutString, isTicked, isActive);
 }
 
-void NativePopupMenu::show(const std::function<bool(int)>& resultCallback)
+void NativePopupMenu::show (const std::function<bool  (int)>& resultCallback)
 {
-	pimpl->show(resultCallback);
+    pimpl->show (resultCallback);
 }
-
 } // namespace yup

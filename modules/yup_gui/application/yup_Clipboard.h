@@ -23,54 +23,47 @@
 
 namespace yup
 {
-
 /** A class that allows writing and reading text from the system clipboard. */
 class JUCE_API Clipboard
 {
 public:
-
-	static String paste();
-	static void copy(const String& text);
+    static String paste ();
+    static void copy (const String& text);
 
 private:
-
     struct ScopedClipboardLoader
     {
-	    ScopedClipboardLoader();
-		~ScopedClipboardLoader();
+        ScopedClipboardLoader ();
+        ~ScopedClipboardLoader ();
 
-        void* getClipboardData() const { return handle; }
+        void* getClipboardData () const { return handle; }
 
-	    bool isEmpty() const noexcept;
-	    void writeToClipboard(void* data);
-	    void* allocate(const String& text);
+        bool isEmpty () const noexcept;
+        void writeToClipboard (void* data);
+        void* allocate (const String& text);
 
-	    operator bool() const noexcept { return ok; }
+        operator bool () const noexcept { return ok; }
 
     private:
-
         void* handle = nullptr;
         const bool ok;
     };
 
     struct ScopedDataAccess
     {
-	    ScopedDataAccess(void* handle_);
-		~ScopedDataAccess();
+        ScopedDataAccess (void* handle_);
+        ~ScopedDataAccess ();
 
-        const wchar_t* getData() const;
+        const wchar_t* getData () const;
 
-	    wchar_t* getData();
-	    size_t getNumBytes() const;
-	    void writeString(const String& text);
-	    String toString() const;
+        wchar_t* getData ();
+        size_t getNumBytes () const;
+        void writeString (const String& text);
+        String toString () const;
 
     private:
-
-	    void* data;
+        void* data;
         void* handle;
     };
 };
-
-
 } // namespace yup

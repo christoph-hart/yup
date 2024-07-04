@@ -19,205 +19,214 @@
   ==============================================================================
 */
 
-namespace yup {
-
-Label::Label(const String& id):
-	Component(id.isEmpty() ? "Label" : id),
-	updater(*this),
-	downCursor(*this),
-	dragCursor(*this),
-	scrollbar(Scrollbar::Type::verticalScrollbar, *this),
-	viewport(scrollbar)
+namespace yup
 {
-
-	viewport.setResizeOnScroll(true);
-	MouseCursor mc(MouseCursor::StandardCursorTypes::IBeamCursor);
-	setMouseCursor(mc);
-	setWantsKeyboardFocus(KeyboardFocusMode::WantsTextInputCallback);
-	startTimer(15);
+Label::Listener::~Listener ()
+{
 }
 
-void Label::setText(const juce::String& newText, juce::NotificationType notifyListeners)
+Label::Label (const String& id)
+    : Component (id.isEmpty() ? "Label" : id)
+    , scrollbar (Scrollbar::Type::verticalScrollbar, *this)
+    , viewport (scrollbar)
+    , updater (*this)
+    , downCursor (*this)
+    , dragCursor (*this)
 {
-	content = newText;
-
-	if(!listeners.isEmpty() && notifyListeners != dontSendNotification)
-	{
-		if(!MessageManager::getInstance()->isThisTheMessageThread())
-			updater.triggerAsyncUpdate();
-		else
-		{
-			switch(notifyListeners)
-			{
-			case dontSendNotification: break;
-			case sendNotification: break;
-			case sendNotificationAsync: updater.triggerAsyncUpdate(); break;
-			case sendNotificationSync: updater.handleAsyncUpdate();
-			default: ;
-			}
-		}
-	}
-
-	rebuildText();
+    viewport.setResizeOnScroll (true);
+    MouseCursor mc (MouseCursor::StandardCursorTypes::IBeamCursor);
+    setMouseCursor (mc);
+    setWantsKeyboardFocus (KeyboardFocusMode::WantsTextInputCallback);
+    startTimer (15);
 }
 
-void Label::timerCallback()
+void Label::setText (const juce::String& newText, juce::NotificationType notifyListeners)
 {
-	if(dragCursor)
-	{
-		alpha += 0.1f;
-		repaint(dragCursor.getPosition().enlarged(3.0f));
-	}
+    content = newText;
+
+    if (! listeners.isEmpty() && notifyListeners != dontSendNotification)
+    {
+        if (! MessageManager::getInstance()->isThisTheMessageThread())
+            updater.triggerAsyncUpdate();
+        else
+        {
+            switch (notifyListeners)
+            {
+                case dontSendNotification:
+                    break;
+                case sendNotification:
+                    break;
+                case sendNotificationAsync:
+                    updater.triggerAsyncUpdate();
+                    break;
+                case sendNotificationSync:
+                    updater.handleAsyncUpdate();
+                default: ;
+            }
+        }
+    }
+
+    rebuildText();
 }
 
-void Label::setReadOnly(bool shouldBeReadOnly)
+void Label::timerCallback ()
 {
-	if(readOnly != shouldBeReadOnly)
-	{
-		readOnly = shouldBeReadOnly;
-		setWantsKeyboardFocus(shouldBeReadOnly ? KeyboardFocusMode::WantsTextInputCallback : KeyboardFocusMode::WantsNoFocus);
-	}
+    if (dragCursor)
+    {
+        alpha += 0.1f;
+        repaint (dragCursor.getPosition().enlarged (3.0f));
+    }
 }
 
-void Label::setPadding(float newPadding)
+void Label::setReadOnly (bool shouldBeReadOnly)
 {
-	padding = newPadding * getScaleDpi();
-	rebuildText();
+    if (readOnly != shouldBeReadOnly)
+    {
+        readOnly = shouldBeReadOnly;
+        setWantsKeyboardFocus (shouldBeReadOnly ? KeyboardFocusMode::WantsTextInputCallback : KeyboardFocusMode::WantsNoFocus);
+    }
 }
 
-void Label::keyDown(const KeyPress& keys, const Point<float>& position)
+void Label::setPadding (float newPadding)
 {
-	if(readOnly)
-		return;
-
-	if(keys.getKey() == KeyPress::escapeKey)
-	{
-		leaveFocus();
-		dragCursor.clear();
-		downCursor.clear();
-		repaint();
-		return;
-	}
-	if(keys.getKey() == KeyPress::enterKey)
-	{
-		if(multiline)
-		{
-			insert("\n");
-		}
-		else
-		{
-			leaveFocus();
-			dragCursor.clear();
-			downCursor.clear();
-			repaint();
-		}
-
-		return;
-	}
-
-	KeyModifiers ctrl(2);
-
-	std::vector<std::pair<std::pair<int, KeyModifiers>, int>> navCom;
-	std::vector<std::pair<std::pair<int, KeyModifiers>, int>> functions;
-
-	navCom.push_back({{ KeyPress::leftKey, {} }, -1});
-	navCom.push_back({{ KeyPress::rightKey, {} }, 1});
-	navCom.push_back({{ KeyPress::upKey, {} }, multiline ? PrevLine : BeginPos});
-	navCom.push_back({{ KeyPress::downKey, {} }, multiline ? NextLine : EndPos});
-	navCom.push_back({{ KeyPress::homeKey, {} }, LineStart});
-	navCom.push_back({{ KeyPress::endKey, {} }, LineEnd});
-	navCom.push_back({{ KeyPress::pageUpKey, {} }, BeginPos});
-	navCom.push_back({{ KeyPress::pageDownKey, {} }, EndPos});
-	navCom.push_back({{ KeyPress::leftKey, ctrl }, BeginPos});
-	navCom.push_back({{ KeyPress::rightKey, ctrl }, EndPos});
-
-	functions.push_back({{ KeyPress::textCKey, ctrl }, Copy});
-	functions.push_back({{ KeyPress::textXKey, ctrl }, Cut});
-	functions.push_back({{ KeyPress::textVKey, ctrl }, Paste});
-	functions.push_back({{ KeyPress::textYKey, ctrl }, Undo});
-	functions.push_back({{ KeyPress::textZKey, ctrl }, Redo}); // this is switched on german keyboards lol...
-	functions.push_back({{ KeyPress::textAKey, ctrl }, SelectAll});
-
-	for(const auto& nc: navCom)
-	{
-		if(nc.first.first == keys.getKey() && nc.first.second == keys.getModifiers().withoutFlags(KeyModifiers::shiftMask))
-			return navigate(keys.getModifiers().isShiftDown(), nc.second);
-	}
-
-	for(const auto& f: functions)
-	{
-		if(f.first.first == keys.getKey() && f.first.second == keys.getModifiers())
-			return perform(f.second);
-	}
-
-	if(keys.getKey() == KeyPress::deleteKey)
-		return deleteSelection(1);
-	if(keys.getKey() == KeyPress::backspaceKey)
-		return deleteSelection(-1);
+    padding = newPadding * getScaleDpi();
+    rebuildText();
 }
 
-void Label::mouseDoubleClick(const MouseEvent& e)
+void Label::keyDown (const KeyPress& keys, const Point<float>& position)
 {
-	perform(SelectAll);
+    if (readOnly)
+        return;
+
+    if (keys.getKey() == KeyPress::escapeKey)
+    {
+        leaveFocus();
+        dragCursor.clear();
+        downCursor.clear();
+        repaint();
+        return;
+    }
+    if (keys.getKey() == KeyPress::enterKey)
+    {
+        if (multiline)
+        {
+            insert ("\n");
+        }
+        else
+        {
+            leaveFocus();
+            dragCursor.clear();
+            downCursor.clear();
+            repaint();
+        }
+
+        return;
+    }
+
+    KeyModifiers ctrl (2);
+
+    std::vector<std::pair<std::pair<int, KeyModifiers>, int>> navCom;
+    std::vector<std::pair<std::pair<int, KeyModifiers>, int>> functions;
+
+    navCom.push_back ({ { KeyPress::leftKey, {} }, -1 });
+    navCom.push_back ({ { KeyPress::rightKey, {} }, 1 });
+    navCom.push_back ({ { KeyPress::upKey, {} }, multiline ? PrevLine : BeginPos });
+    navCom.push_back ({ { KeyPress::downKey, {} }, multiline ? NextLine : EndPos });
+    navCom.push_back ({ { KeyPress::homeKey, {} }, LineStart });
+    navCom.push_back ({ { KeyPress::endKey, {} }, LineEnd });
+    navCom.push_back ({ { KeyPress::pageUpKey, {} }, BeginPos });
+    navCom.push_back ({ { KeyPress::pageDownKey, {} }, EndPos });
+    navCom.push_back ({ { KeyPress::leftKey, ctrl }, BeginPos });
+    navCom.push_back ({ { KeyPress::rightKey, ctrl }, EndPos });
+
+    functions.push_back ({ { KeyPress::textCKey, ctrl }, Copy });
+    functions.push_back ({ { KeyPress::textXKey, ctrl }, Cut });
+    functions.push_back ({ { KeyPress::textVKey, ctrl }, Paste });
+    functions.push_back ({ { KeyPress::textYKey, ctrl }, Undo });
+    functions.push_back ({ { KeyPress::textZKey, ctrl }, Redo }); // this is switched on german keyboards lol...
+    functions.push_back ({ { KeyPress::textAKey, ctrl }, SelectAll });
+
+    for (const auto& nc : navCom)
+    {
+        if (nc.first.first == keys.getKey() && nc.first.second == keys.getModifiers().withoutFlags (KeyModifiers::shiftMask))
+            return navigate (keys.getModifiers().isShiftDown(), nc.second);
+    }
+
+    for (const auto& f : functions)
+    {
+        if (f.first.first == keys.getKey() && f.first.second == keys.getModifiers())
+            return perform (f.second);
+    }
+
+    if (keys.getKey() == KeyPress::deleteKey)
+        return deleteSelection (1);
+    if (keys.getKey() == KeyPress::backspaceKey)
+        return deleteSelection (-1);
 }
 
-void Label::mouseDown(const MouseEvent& event)
+void Label::mouseDoubleClick (const MouseEvent& e)
 {
-	if(event.isRightButtonDown())
-	{
-		NativePopupMenu menu(*this);
-
-		menu.addItem(Cut, "Cut", "Ctrl+X", false, !getSelection().isEmpty());
-		menu.addItem(Copy, "Copy", "Ctrl+C", false, !getSelection().isEmpty());
-		menu.addItem(Paste, "Paste", "Ctrl+V", false, !readOnly);
-		menu.addSeparator();
-		menu.addItem(SelectAll, "Select all", "Ctrl+A");
-
-		if(!readOnly)
-		{
-			menu.addSeparator();
-			menu.addItem(Undo, "Undo", "Ctrl+Z", false);
-			menu.addItem(Redo, "Redo", "Ctrl+Y");
-		}
-
-		menu.show([this](int result)
-		{
-			this->perform(result);
-			return true;
-		});
-
-		return;
-	}
-	
-	alpha = 0.0f;
-	
-	if(!hasFocus())
-	{
-		isBeingEdited = true;
-		takeFocus();
-		perform(SelectAll);
-	}
-	else
-	{
-		if(event.getModifiers().isShiftDown())
-		{
-			dragCursor.updateFromMouseEvent(event);
-		}
-		else
-		{
-			downCursor.updateFromMouseEvent(event);
-			dragCursor.moveTo(downCursor);
-		}
-	}
-
-	repaint();
+    perform (SelectAll);
 }
 
-void Label::mouseDrag(const MouseEvent& event)
+void Label::mouseDown (const MouseEvent& event)
 {
-	dragCursor.updateFromMouseEvent(event);
-	repaint();
+    if (event.isRightButtonDown())
+    {
+        NativePopupMenu menu (*this);
+
+        menu.addItem (Cut, "Cut", "Ctrl+X", false, ! getSelection().isEmpty());
+        menu.addItem (Copy, "Copy", "Ctrl+C", false, ! getSelection().isEmpty());
+        menu.addItem (Paste, "Paste", "Ctrl+V", false, ! readOnly);
+        menu.addSeparator();
+        menu.addItem (SelectAll, "Select all", "Ctrl+A");
+
+        if (! readOnly)
+        {
+            menu.addSeparator();
+            menu.addItem (Undo, "Undo", "Ctrl+Z", false);
+            menu.addItem (Redo, "Redo", "Ctrl+Y");
+        }
+
+        menu.show ([this](int result)
+        {
+            this->perform (result);
+            return true;
+        });
+
+        return;
+    }
+
+    alpha = 0.0f;
+
+    if (! hasFocus())
+    {
+        isBeingEdited = true;
+        takeFocus();
+        perform (SelectAll);
+    }
+    else
+    {
+        if (event.getModifiers().isShiftDown())
+        {
+            dragCursor.updateFromMouseEvent (event);
+        }
+        else
+        {
+            downCursor.updateFromMouseEvent (event);
+            dragCursor.moveTo (downCursor);
+        }
+    }
+
+    repaint();
 }
+
+void Label::mouseDrag (const MouseEvent& event)
+{
+    dragCursor.updateFromMouseEvent (event);
+    repaint();
+}
+
 
 void convertRawPathToRenderPath (const rive::RawPath& input, rive::RenderPath* output, const AffineTransform& transform)
 {
@@ -230,435 +239,527 @@ void convertRawPathToRenderPath (const rive::RawPath& input, rive::RenderPath* o
     newInput.addTo (output);
 }
 
-void Label::paint(Graphics& g)
+void Label::paint (Graphics& g)
 {
-	g.setFillColor(0xFF555555);
-	g.fillRoundedRect(getLocalBounds(), 3);
+    g.setFillColor (0xFF555555);
+    g.fillRoundedRect (getLocalBounds(), 3);
 
-	if(downCursor)
-	{
-		g.setStrokeColor(Colors::white.withAlpha(0.4f));
-		g.strokeRoundedRect(getLocalBounds().reduced(2.0f), 2.0f);
-	}
+    if (downCursor)
+    {
+        g.setStrokeColor (Colors::white.withAlpha (0.4f));
+        g.strokeRoundedRect (getLocalBounds().reduced (2.0f), 2.0f);
+    }
 
-	g.setTransform(viewport.getTransform());
-	
-	if(!downCursor.getSelection(dragCursor).isEmpty())
-	{
-		auto selections = downCursor.getSelectionRectangles(dragCursor);
+    g.setTransform (viewport.getTransform());
 
-		g.setFillColor(0xFF888888);
+    if (! downCursor.getSelection (dragCursor).isEmpty())
+    {
+        auto selections = downCursor.getSelectionRectangles (dragCursor);
 
-		for(auto& s: selections)
-			g.fillRoundedRect(s.enlarged(0.0f, 6.0f), 1.0f);
-	}
+        g.setFillColor (0xFF888888);
 
-	auto& cTouse = dragCursor ? dragCursor : downCursor;
+        for (auto& s : selections)
+            g.fillRoundedRect (s.enlarged (0.0f, 6.0f), 1.0f);
+    }
 
-	if(cTouse)
-	{
-		auto b = cTouse.getPosition();
-		g.setFillColor(Colors::white.withAlpha(0.5f * std::cos(alpha) + 0.5f));
-		g.fillRect(b.enlarged(0.0f, 4.0f).translated(-2.0f, 0.0f));
-	}
+    auto& cTouse = dragCursor ? dragCursor : downCursor;
 
-	g.setStrokeColor(Colors::white);
-	g.strokeRawPath(path);
+    if (cTouse)
+    {
+        auto b = cTouse.getPosition();
+        g.setFillColor (Colors::white.withAlpha (0.5f * std::cos (alpha) + 0.5f));
+        g.fillRect (b.enlarged (0.0f, 4.0f).translated (-2.0f, 0.0f));
+    }
+
+    g.setStrokeColor (Colors::white);
+    g.strokeRawPath (path);
 }
 
-void Label::resized()
+void Label::resized ()
 {
-	Rectangle<float> b(0.0f, 0.f, getWidth(), 10000.0f);
+    Rectangle<float> b (0.0f, 0.f, getWidth(), 10000.0f);
 
-	auto baseLineY = b.getY();
-	lineInformation = text.layout (b.reduced(padding), alignment);
-	
-	{
-		auto factory = getNativeComponent()->getFactory();
-		path = factory->makeEmptyRenderPath();
+    auto baseLineY = b.getY();
+    lineInformation = text.layout (b.reduced (padding), alignment);
 
-	    std::size_t totalPathSize = 0;
-	    for (const auto& rawPath : text.getGlyphs())
-	        totalPathSize += rawPath.verbs().size();
+    {
+        auto factory = getNativeComponent()->getFactory();
+        path = factory->makeEmptyRenderPath();
 
-		auto transform = viewport.getTransform();
-		auto visibleArea = viewport.getVisibleArea();
+        std::size_t totalPathSize = 0;
+        for (const auto& rawPath : text.getGlyphs())
+            totalPathSize += rawPath.verbs().size();
 
-		transform = transform.translated(getX(), getY());
+        auto transform = viewport.getTransform();
+        auto visibleArea = viewport.getVisibleArea();
 
-	    for (const auto& rawPath : text.getGlyphs())
-	    {
-			Rectangle<float> rb(rawPath.bounds());
-			
-			if(visibleArea.contains(rb.getCenter()))
-				convertRawPathToRenderPath (rawPath, path.get(), transform);
-	    }
-	}
+        transform = transform.translated (getX(), getY());
 
-	xPosRanges.clear();
+        for (const auto& rawPath : text.getGlyphs())
+        {
+            Rectangle<float> rb (rawPath.bounds());
 
-	if(!text.getGlyphs().empty())
-	{
-		auto first = text.getGlyphs()[0].bounds().left();
+            if (visibleArea.contains (rb.getCenter()))
+                convertRawPathToRenderPath (rawPath, path.get(), transform);
+        }
+    }
 
-		int lineNumber = 0;
+    xPosRanges.clear();
 
-		while(auto p = text.getParagraph(lineNumber))
-		{
-			float lastPos = 0.0f;
-			float nextPos = 0.0f;
+    if (! text.getGlyphs().empty())
+    {
+        auto first = text.getGlyphs()[0].bounds().left();
 
-			Array<Range<float>> xPos;
+        int lineNumber = 0;
 
-			for(auto& r: p->runs)
-			{
-				for(auto& x: r.xpos)
-				{
-					lastPos = nextPos;
-					nextPos = x;
-					xPos.add({lastPos + first, nextPos + first});
-				}
-			}
+        while (auto p = text.getParagraph (lineNumber))
+        {
+            float lastPos = 0.0f;
+            float nextPos = 0.0f;
 
-			xPos.remove(0);
+            Array<Range<float>> xPos;
 
-			xPosRanges.add(xPos);
-			lineNumber++;
-		}
-	}
+            for (auto& r : p->runs)
+            {
+                for (auto& x : r.xpos)
+                {
+                    lastPos = nextPos;
+                    nextPos = x;
+                    xPos.add ({ lastPos + first, nextPos + first });
+                }
+            }
 
-	auto realHeight = lineInformation.getLast().first + fontSize;
+            xPos.remove (0);
 
-	viewport.setContentArea(getWidth(), realHeight);
-        
-	repaint();
+            xPosRanges.add (xPos);
+            lineNumber++;
+        }
+    }
+
+    auto realHeight = lineInformation.getLast().first + fontSize;
+
+    viewport.setContentArea (getWidth(), realHeight);
+
+    repaint();
 }
 
-void Label::setFont(const yup::Font& f, float newFontSize)
+void Label::setFont (const yup::Font& f, float newFontSize)
 {
-	font = f;
-	fontSize = newFontSize * getScaleDpi();
-	rebuildText();
+    font = f;
+    fontSize = newFontSize * getScaleDpi();
+    rebuildText();
 }
 
-void Label::setJustification(StyledText::Alignment newAlignment)
+void Label::setJustification (StyledText::Alignment newAlignment)
 {
-	alignment = newAlignment;
-	rebuildText();
+    alignment = newAlignment;
+    rebuildText();
 }
 
-void Label::setMultiline(bool shouldBeMultiline)
+void Label::setMultiline (bool shouldBeMultiline)
 {
-	multiline = shouldBeMultiline;
+    multiline = shouldBeMultiline;
 }
 
-void Label::addListener(Listener* l)
+void Label::addListener (Listener* l)
 {
-	listeners.add(l);
+    listeners.add (l);
 }
 
-void Label::removeListener(Listener* l)
+void Label::removeListener (Listener* l)
 {
-	listeners.remove(l);
+    listeners.remove (l);
 }
 
-void Label::insert(const String& text)
+void Label::insert (const String& text)
 {
-	auto range = downCursor.getSelection(dragCursor);
-	auto left = range.getStart();
-	auto right = range.getEnd();
+    auto range = downCursor.getSelection (dragCursor);
+    auto left = range.getStart();
+    auto right = range.getEnd();
 
-	auto oldText = content.substring(left, right);
-	auto posAfter = right - oldText.length() + text.length();
+    auto oldText = content.substring (left, right);
+    auto posAfter = right - oldText.length() + text.length();
 
-	um.perform<Label>(*this, [left, right, posAfter, oldText, text](Label& l, bool isUndo)
-	{
-		String newContent;
+    um.perform<Label> (*this,
+                       [left, right, posAfter, oldText, text](Label& l, bool isUndo)
+                       {
+                           String newContent;
 
-		auto& t = isUndo ? oldText : text;
-		auto& r = isUndo ? right : posAfter;
+                           auto& t = isUndo ? oldText : text;
+                           auto& r = isUndo ? right : posAfter;
 
-		newContent.preallocateBytes(left + r + t.length());
+                           newContent.preallocateBytes (left + r + t.length());
 
-		newContent << l.content.substring(0, left);
-		newContent << t;
-		newContent << l.content.substring(isUndo ? posAfter : right);
+                           newContent << l.content.substring (0, left);
+                           newContent << t;
+                           newContent << l.content.substring (isUndo ? posAfter : right);
 
-		l.setText(newContent, sendNotification);
+                           l.setText (newContent, sendNotification);
 
-		l.downCursor.moveTo(isUndo ? left : r);
-		l.dragCursor.moveTo(r);
-		l.dragCursor.scrollToShow();
-            
-		l.alpha = 0.0f;
+                           l.downCursor.moveTo (isUndo ? left : r);
+                           l.dragCursor.moveTo (r);
+                           l.dragCursor.scrollToShow();
 
-		return true;
-	});
+                           l.alpha = 0.0f;
+
+                           return true;
+                       });
 }
 
-void Label::deleteSelection(int delta)
+void Label::deleteSelection (int delta)
 {
-	if(downCursor.getSelection(dragCursor).isEmpty())
-		downCursor.move(delta);
+    if (downCursor.getSelection (dragCursor).isEmpty())
+        downCursor.move (delta);
 
-	insert("");
+    insert ("");
 }
 
-void Label::insert(char textChar)
+void Label::insert (char textChar)
 {
-	String t;
-	t << textChar;
-	insert(t);
+    String t;
+    t << textChar;
+    insert (t);
 }
 
-void Label::navigate(bool select, int delta)
+void Label::navigate (bool select, int delta)
 {
-	alpha = 0.0f;
+    alpha = 0.0f;
 
-	dragCursor.move(delta);
+    dragCursor.move (delta);
 
-	if(!select)
-		downCursor.moveTo(dragCursor);
+    if (! select)
+        downCursor.moveTo (dragCursor);
 
-	dragCursor.scrollToShow();
+    dragCursor.scrollToShow();
 }
 
-String Label::getSelection() const
+String Label::getSelection () const
 {
-	auto r = downCursor.getSelection(dragCursor);
-	return content.substring(r.getStart(), r.getEnd());
+    auto r = downCursor.getSelection (dragCursor);
+    return content.substring (r.getStart(), r.getEnd());
 }
 
-void Label::perform(int command)
+void Label::perform (int command)
 {
-	switch(command)
-	{
-	case Cut: 
-		Clipboard::copy(getSelection()); 
-		deleteSelection(0);
-		break;
-	case Copy: 
-		Clipboard::copy(getSelection());
-		break;
-	case Paste: 
-		insert(Clipboard::paste());
-		break;
-	case SelectAll:
-		downCursor.moveToStart();
-		dragCursor.moveToEnd();
-		break;
-	case Undo:
-		um.undo();
-		break;
-	case Redo:
-		um.redo();
-		break;
-	}
+    switch (command)
+    {
+        case Cut:
+            Clipboard::copy (getSelection());
+            deleteSelection (0);
+            break;
+        case Copy:
+            Clipboard::copy (getSelection());
+            break;
+        case Paste:
+            insert (Clipboard::paste());
+            break;
+        case SelectAll:
+            downCursor.moveToStart();
+            dragCursor.moveToEnd();
+            break;
+        case Undo:
+            um.undo();
+            break;
+        case Redo:
+            um.redo();
+            break;
+    }
 }
 
-void Label::rebuildText()
+void Label::rebuildText ()
 {
-	text.clear();
+    text.clear();
 
-	if(font.getFont() != nullptr && !content.isEmpty())
-		text.appendText(font, fontSize, fontSize, content.toRawUTF8());
+    if (font.getFont() != nullptr && ! content.isEmpty())
+        text.appendText (font, fontSize, fontSize, content.toRawUTF8());
 
-	resized();
+    resized();
 }
 
-Label::Updater::Updater(Label& parent_):
-	parent(parent_)
-{}
-
-void Label::Updater::handleAsyncUpdate()
+Label::Updater::Updater (Label& parent_)
+    : parent (parent_)
 {
-	parent.listeners.call([this](Label::Listener& l){ l.labelTextChanged(parent); });
 }
 
-Label::Cursor::Cursor(const Label& l):
-	charIndex(-1),
-	parent(l)
-{}
-
-bool Label::Cursor::moveToStart()
+void Label::Updater::handleAsyncUpdate ()
 {
-	return moveTo(0);
+    parent.listeners.call ([this](Label::Listener& l) { l.labelTextChanged (parent); });
 }
 
-bool Label::Cursor::moveToEnd()
+Label::Cursor::Cursor (const Label& l)
+    : parent (l)
+    , charIndex (-1)
 {
-	return moveTo(INT_MAX);
 }
 
-bool Label::Cursor::updateFromMouseEvent(const MouseEvent& e)
+bool Label::Cursor::moveToStart ()
 {
-	auto tl = parent.getBounds().getTopLeft();
-	auto mousePos = e.getPosition().transformed(parent.viewport.getTransform().inverted());
-	auto lp = mousePos - tl;
-
-	lineNumber = 0;
-
-	for(int i = 0; i < parent.lineInformation.size(); i++)
-	{
-		if(lp.getY() > parent.lineInformation[i].first)
-		{
-			lineNumber = i;
-		}
-	}
-	
-	if(parent.content.isEmpty())
-		return moveToStart();
-
-	auto xPos = parent.getXPositions(lineNumber);
-
-	if(xPos[0].getStart() > lp.getX())
-		return moveToStart();
-
-	int posIndex = 0;
-
-	if(xPos.getLast().getEnd() < lp.getX())
-		return moveToEnd();
-	         
-	for(auto& p: xPos)
-	{
-		if(p.contains(lp.getX()))
-		{
-			auto normPos = (lp.getX() - p.getStart()) / (p.getLength());
-			auto newIndex = normPos > 0.5 ? posIndex + 1 : posIndex;
-
-			newIndex += parent.lineInformation[lineNumber].second.getStart();
-
-			return moveTo(newIndex);
-		}
-
-		++posIndex;
-	}
-
-	return false;
+    return moveTo (0);
 }
 
-Rectangle<float> Label::Cursor::getPosition() const
+bool Label::Cursor::moveToEnd ()
 {
-	Rectangle<float> area(0.0, parent.lineInformation[lineNumber].first, 2.0f, parent.fontSize);
-
-	if(parent.content.isEmpty())
-	{
-		area.setY(parent.padding);
-
-		switch(parent.alignment)
-		{
-		case StyledText::left: area.setX(parent.padding); break;
-		case StyledText::center: area.setX(parent.getLocalBounds().getCenter().getX()); break;
-		case StyledText::right: area.setX(parent.getLocalBounds().getWidth() - parent.padding);break;
-		default: return {};
-		}
-
-		return area;
-	}
-
-	auto xpos = parent.xPosRanges[lineNumber];
-
-	auto indexInLine = charIndex - parent.lineInformation[lineNumber].second.getStart();
-
-	if(isPositiveAndBelow(indexInLine, xpos.size()))
-		area.setX(xpos[indexInLine].getStart());
-			    
-	else
-		area.setX(xpos.getLast().getEnd());
-
-	return area;
+    return moveTo (INT_MAX);
 }
 
-bool Label::Cursor::moveTo(const Cursor& other)
+bool Label::Cursor::moveToStartOfLine ()
 {
-	auto prev = charIndex;
-	charIndex = other.charIndex;
-	lineNumber = other.lineNumber;
-	return prev != charIndex;
+    auto prevIndex = charIndex;
+    charIndex = parent.lineInformation[lineNumber].second.getStart();
+    return prevIndex != charIndex;
 }
 
-bool Label::Cursor::moveTo(int pos)
+bool Label::Cursor::moveToEndOfLine ()
 {
-	auto prev = charIndex;
-	charIndex = jlimit(0, parent.content.length(), pos);
-
-	updateLineNumber();
-
-	return prev != charIndex;
+    auto prevIndex = charIndex;
+    charIndex = parent.lineInformation[lineNumber].second.getEnd();
+    return prevIndex != charIndex;
 }
 
-bool Label::Cursor::move(int delta)
+bool Label::Cursor::updateFromMouseEvent (const MouseEvent& e)
 {
-	if(delta == LineEnd)
-		return moveToEndOfLine();
-	if(delta == LineStart)
-		return moveToStartOfLine();
-	if(delta == NextLine)
-		return moveLine(1);
-	if(delta == PrevLine)
-		return moveLine(-1);
+    auto tl = parent.getBounds().getTopLeft();
+    auto mousePos = e.getPosition().transformed (parent.viewport.getTransform().inverted());
+    auto lp = mousePos - tl;
 
-	auto prev = charIndex;
+    lineNumber = 0;
 
-	charIndex = jlimit(0, parent.content.length(), charIndex + delta);
+    for (int i = 0; i < parent.lineInformation.size(); i++)
+    {
+        if (lp.getY() > parent.lineInformation[i].first)
+        {
+            lineNumber = i;
+        }
+    }
 
-	updateLineNumber();
+    if (parent.content.isEmpty())
+        return moveToStart();
 
-	return prev != charIndex;
+    auto xPos = parent.getXPositions (lineNumber);
+
+    if (xPos[0].getStart() > lp.getX())
+        return moveToStart();
+
+    int posIndex = 0;
+
+    if (xPos.getLast().getEnd() < lp.getX())
+        return moveToEnd();
+
+    for (auto& p : xPos)
+    {
+        if (p.contains (lp.getX()))
+        {
+            auto normPos = (lp.getX() - p.getStart()) / (p.getLength());
+            auto newIndex = normPos > 0.5 ? posIndex + 1 : posIndex;
+
+            newIndex += parent.lineInformation[lineNumber].second.getStart();
+
+            return moveTo (newIndex);
+        }
+
+        ++posIndex;
+    }
+
+    return false;
 }
 
-bool Label::Cursor::moveLine(int delta)
+Rectangle<float> Label::Cursor::getPosition () const
 {
-	auto xPos = getPosition().getX();
+    Rectangle<float> area (0.0, parent.lineInformation[lineNumber].first, 2.0f, parent.fontSize);
 
-	auto prev = charIndex;
+    if (parent.content.isEmpty())
+    {
+        area.setY (parent.padding);
 
-	auto newLineNumber = jlimit(0, parent.lineInformation.size()-1, lineNumber + delta);
+        switch (parent.alignment)
+        {
+            case StyledText::left:
+                area.setX (parent.padding);
+                break;
+            case StyledText::center:
+                area.setX (parent.getLocalBounds().getCenter().getX());
+                break;
+            case StyledText::right:
+                area.setX (parent.getLocalBounds().getWidth() - parent.padding);
+                break;
+            default:
+                return {};
+        }
 
-            
+        return area;
+    }
 
-	auto positionsInNewLine = parent.xPosRanges[newLineNumber];
+    auto xpos = parent.xPosRanges[lineNumber];
 
-	if(xPos > positionsInNewLine.getLast().getEnd())
-	{
-		charIndex = parent.lineInformation[newLineNumber].second.getEnd()-1;
-	}
-	else
-	{
-		for(int i = 0; i < positionsInNewLine.size(); i++)
-		{
-			if(positionsInNewLine[i].contains(xPos))
-			{
-				auto normPos = (xPos - positionsInNewLine[i].getStart()) / positionsInNewLine[i].getLength();
+    auto indexInLine = charIndex - parent.lineInformation[lineNumber].second.getStart();
 
-				if(normPos > 0.5)
-					i++;
+    if (isPositiveAndBelow (indexInLine, xpos.size()))
+        area.setX (xpos[indexInLine].getStart());
 
-				charIndex = parent.lineInformation[newLineNumber].second.getStart() + i;
-				break;
-			}
-		}
-	}
+    else
+        area.setX (xpos.getLast().getEnd());
 
-            
-
-	lineNumber = newLineNumber;
-
-
-
-	return prev != charIndex;
+    return area;
 }
 
-void Label::Cursor::clear()
+bool Label::Cursor::moveTo (const Cursor& other)
 {
-	charIndex = -1;
+    auto prev = charIndex;
+    charIndex = other.charIndex;
+    lineNumber = other.lineNumber;
+    return prev != charIndex;
 }
 
-Range<int> Label::Cursor::getSelection(const Cursor& other) const
+bool Label::Cursor::moveTo (int pos)
 {
-	auto l = jmin(charIndex, other.charIndex);
-	auto r = jmax(charIndex, other.charIndex);
+    auto prev = charIndex;
+    charIndex = jlimit (0, parent.content.length(), pos);
 
-	return { l, r };
+    updateLineNumber();
+
+    return prev != charIndex;
+}
+
+bool Label::Cursor::move (int delta)
+{
+    if (delta == LineEnd)
+        return moveToEndOfLine();
+    if (delta == LineStart)
+        return moveToStartOfLine();
+    if (delta == NextLine)
+        return moveLine (1);
+    if (delta == PrevLine)
+        return moveLine (-1);
+
+    auto prev = charIndex;
+
+    charIndex = jlimit (0, parent.content.length(), charIndex + delta);
+
+    updateLineNumber();
+
+    return prev != charIndex;
+}
+
+bool Label::Cursor::moveLine (int delta)
+{
+    auto xPos = getPosition().getX();
+
+    auto prev = charIndex;
+
+    auto newLineNumber = jlimit (0, parent.lineInformation.size() - 1, lineNumber + delta);
+
+    auto positionsInNewLine = parent.xPosRanges[newLineNumber];
+
+    if (xPos > positionsInNewLine.getLast().getEnd())
+    {
+        charIndex = parent.lineInformation[newLineNumber].second.getEnd() - 1;
+    }
+    else
+    {
+        for (int i = 0; i < positionsInNewLine.size(); i++)
+        {
+            if (positionsInNewLine[i].contains (xPos))
+            {
+                auto normPos = (xPos - positionsInNewLine[i].getStart()) / positionsInNewLine[i].getLength();
+
+                if (normPos > 0.5)
+                    i++;
+
+                charIndex = parent.lineInformation[newLineNumber].second.getStart() + i;
+                break;
+            }
+        }
+    }
+
+    lineNumber = newLineNumber;
+
+    return prev != charIndex;
+}
+
+void Label::Cursor::scrollToShow ()
+{
+    auto yPos = parent.lineInformation[lineNumber].first;
+    parent.viewport.scrollToShow ({ yPos, yPos + parent.fontSize * 1.5f });
+}
+
+void Label::Cursor::clear ()
+{
+    charIndex = -1;
+}
+
+Range<int> Label::Cursor::getSelection (const Cursor& other) const
+{
+    auto l = jmin (charIndex, other.charIndex);
+    auto r = jmax (charIndex, other.charIndex);
+
+    return { l, r };
+}
+
+RectangleList<float> Label::Cursor::getSelectionRectangles (const Cursor& other) const
+{
+    RectangleList<float> list;
+
+    auto firstPos = getPosition().withWidth (0.0f);
+    auto secondPos = other.getPosition().withWidth (0.0f);
+
+    if (charIndex > other.charIndex)
+        std::swap (firstPos, secondPos);
+
+    if (lineNumber == other.lineNumber)
+    {
+        list.addWithoutMerge (firstPos.smallestContainingRectangle (secondPos));
+    }
+    else
+    {
+        auto minChar = jmin (charIndex, other.charIndex);
+        auto maxChar = jmax (charIndex, other.charIndex);
+
+        Cursor minLineEnd (parent);
+
+        minLineEnd.moveTo (minChar);
+        minLineEnd.moveToEndOfLine();
+        auto firstLineEnd = minLineEnd.getPosition().withWidth (0.0f);
+
+        Cursor maxLineStart (parent);
+        maxLineStart.moveTo (maxChar);
+        maxLineStart.moveToStartOfLine();
+
+        auto lastLineStart = maxLineStart.getPosition().withWidth (0.0f);
+
+        list.addWithoutMerge (firstPos.smallestContainingRectangle (firstLineEnd));
+        list.addWithoutMerge (secondPos.smallestContainingRectangle (lastLineStart));
+    }
+
+    Range<int> lineRange (jmin (lineNumber, other.lineNumber), jmax (lineNumber, other.lineNumber));
+
+    for (int i = lineRange.getStart() + 1; i < lineRange.getEnd(); i++)
+    {
+        auto left = parent.xPosRanges[i].getFirst().getStart();
+        auto y = parent.lineInformation[i].first;
+        auto right = parent.xPosRanges[i].getLast().getEnd();
+        auto w = right - left;
+        auto h = parent.fontSize;
+
+        list.addWithoutMerge ({ left, y, w, h });
+    }
+
+    return list;
+}
+
+void Label::Cursor::updateLineNumber ()
+{
+    for (int i = 0; i < parent.lineInformation.size(); i++)
+    {
+        if (parent.lineInformation[i].second.contains (charIndex))
+        {
+            lineNumber = i;
+            break;
+        }
+    }
+}
+
+juce::Array<Range<float>> Label::getXPositions (int lineNumber) const
+{
+    return xPosRanges[lineNumber];
 }
 } // namespace yup

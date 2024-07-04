@@ -21,137 +21,169 @@
 
 namespace yup
 {
-UndoManager::UndoManager(bool startTimer)
+UndoManager::ScopedActionIsolator::ScopedActionIsolator (UndoManager& um_)
+    : um (um_)
 {
-	if(startTimer)
-		setEnabled(true);
-	else
-		currentlyBuiltAction = new CoallascatedItem();
+    um.flushCurrentAction();
 }
 
-bool UndoManager::perform(ActionBase::Ptr f)
+UndoManager::ScopedActionIsolator::~ScopedActionIsolator ()
 {
-	if(isSynchronous)
-		flushCurrentAction();
-
-	if(f->call(false))
-	{
-		if(!suspended.get())
-			dynamic_cast<CoallascatedItem*>(currentlyBuiltAction.get())->childItems.add(f);
-
-		return true;
-	}
-
-	return false;
+    um.flushCurrentAction();
 }
 
-bool UndoManager::undo()
+UndoManager::ScopedDeactivator::ScopedDeactivator (UndoManager& um_)
+    : um (um_)
 {
-	return internalUndo(true);
+    prevValue = um.suspended.get();
+    um.suspended = true;
 }
 
-bool UndoManager::redo()
+UndoManager::ScopedDeactivator::~ScopedDeactivator ()
 {
-	return internalUndo(false);
+    um.suspended = prevValue;
 }
 
-void UndoManager::setEnabled(bool shouldBeEnabled)
+UndoManager::UndoManager (bool startTimer)
 {
-	if(isTimerRunning() != shouldBeEnabled)
-	{
-		if(shouldBeEnabled)
-		{
-			startTimer(500);
-			currentlyBuiltAction = new CoallascatedItem();
-		}
-		else
-		{
-			stopTimer();
-			currentlyBuiltAction = nullptr;
-			undoHistory.clear();
-		}
-	}
-	    
+    if (startTimer)
+        setEnabled (true);
+    else
+        currentlyBuiltAction = new CoallascatedItem();
 }
 
-bool UndoManager::CoallascatedItem::call(bool isUndo)
+bool UndoManager::perform (ActionBase::Ptr f)
 {
-	if(isUndo)
-	{
-		for(int i = childItems.size()-1; i >= 0; i--)
-		{
-			if(!childItems[i]->call(isUndo))
-			{
-				childItems.remove(i);
-			}
-		}
-	}
-	else
-	{
-		for(int i = 0; i < childItems.size(); i++)
-		{
-			if(!childItems[i]->call(isUndo))
-			{
-				childItems.remove(i--);
-			}
-		}
-	}
+    if (isSynchronous)
+        flushCurrentAction();
 
-	return !childItems.isEmpty();
+    if (f->call (false))
+    {
+        if (! suspended.get())
+            dynamic_cast<CoallascatedItem*> (currentlyBuiltAction.get())->childItems.add (f);
+
+        return true;
+    }
+
+    return false;
 }
 
-bool UndoManager::CoallascatedItem::isEmpty() const
+bool UndoManager::undo ()
 {
-	return childItems.isEmpty();
+    return internalUndo (true);
 }
 
-void UndoManager::timerCallback()
+bool UndoManager::redo ()
 {
-	flushCurrentAction();
+    return internalUndo (false);
 }
 
-bool UndoManager::internalUndo(bool isUndo)
+void UndoManager::setEnabled (bool shouldBeEnabled)
 {
-	flushCurrentAction();
-
-	auto& idx = isUndo ? nextUndoAction : nextRedoAction;
-
-	if(auto current = undoHistory[idx])
-	{
-		current->call(isUndo);
-
-		auto delta = isUndo ? -1 : 1;
-		nextUndoAction += delta;
-		nextRedoAction += delta;
-		return true;
-	}
-
-	return false;
+    if (isTimerRunning() != shouldBeEnabled)
+    {
+        if (shouldBeEnabled)
+        {
+            startTimer (500);
+            currentlyBuiltAction = new CoallascatedItem();
+        }
+        else
+        {
+            stopTimer();
+            currentlyBuiltAction = nullptr;
+            undoHistory.clear();
+        }
+    }
 }
 
-bool UndoManager::flushCurrentAction()
+void UndoManager::setSynchronousMode (bool shouldBeSynchronous)
 {
-	if(currentlyBuiltAction->isEmpty())
-	{
-		return false;
-	}
+    isSynchronous = shouldBeSynchronous;
+}
 
-	// Remove all future actions
-	if(nextRedoAction < undoHistory.size())
-		undoHistory.removeRange(nextRedoAction, undoHistory.size() - nextRedoAction);
+void UndoManager::beginNewTransaction ()
+{
+    flushCurrentAction();
+}
 
-	undoHistory.add(currentlyBuiltAction);
-	currentlyBuiltAction = new CoallascatedItem();
+bool UndoManager::CoallascatedItem::call (bool isUndo)
+{
+    if (isUndo)
+    {
+        for (int i = childItems.size() - 1; i >= 0; i--)
+        {
+            if (! childItems[i]->call (isUndo))
+            {
+                childItems.remove (i);
+            }
+        }
+    }
+    else
+    {
+        for (int i = 0; i < childItems.size(); i++)
+        {
+            if (! childItems[i]->call (isUndo))
+            {
+                childItems.remove (i--);
+            }
+        }
+    }
 
-	// Clean up to keep the undo history in check
-	int numToRemove = jmax(0, undoHistory.size() - HistorySize);
+    return ! childItems.isEmpty();
+}
 
-	if(numToRemove > 0)
-		undoHistory.removeRange(0, numToRemove);
+bool UndoManager::CoallascatedItem::isEmpty () const
+{
+    return childItems.isEmpty();
+}
 
-	nextUndoAction = undoHistory.size() - 1;
-	nextRedoAction = undoHistory.size();
+void UndoManager::timerCallback ()
+{
+    flushCurrentAction();
+}
 
-	return true;
+bool UndoManager::internalUndo (bool isUndo)
+{
+    flushCurrentAction();
+
+    auto& idx = isUndo ? nextUndoAction : nextRedoAction;
+
+    if (auto current = undoHistory[idx])
+    {
+        current->call (isUndo);
+
+        auto delta = isUndo ? -1 : 1;
+        nextUndoAction += delta;
+        nextRedoAction += delta;
+        return true;
+    }
+
+    return false;
+}
+
+bool UndoManager::flushCurrentAction ()
+{
+    if (currentlyBuiltAction->isEmpty())
+    {
+        return false;
+    }
+
+    // Remove all future actions
+    if (nextRedoAction < undoHistory.size())
+        undoHistory.removeRange (nextRedoAction, undoHistory.size() - nextRedoAction);
+
+    undoHistory.add (currentlyBuiltAction);
+    currentlyBuiltAction = new CoallascatedItem();
+
+    // Clean up to keep the undo history in check
+    int numToRemove = jmax (0, undoHistory.size() - HistorySize);
+
+    if (numToRemove > 0)
+        undoHistory.removeRange (0, numToRemove);
+
+    nextUndoAction = undoHistory.size() - 1;
+    nextRedoAction = undoHistory.size();
+
+    return true;
 }
 }

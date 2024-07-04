@@ -19,240 +19,236 @@
   ==============================================================================
 */
 
-namespace yup {
-
-Scrollbar::InternalViewport::InternalViewport(Scrollbar& sb_):
-  sb(sb_)
+namespace yup
 {
-	sb.addListener(this);
-	sb.parent.addMouseListener(this);
+Scrollbar::InternalViewport::InternalViewport (Scrollbar& sb_)
+    : sb (sb_)
+{
+    sb.addListener (this);
+    sb.parent.addMouseListener (this);
 }
 
-Scrollbar::InternalViewport::~InternalViewport()
+Scrollbar::InternalViewport::~InternalViewport ()
 {
-	sb.removeListener(this);
-	sb.parent.removeMouseListener(this);
+    sb.removeListener (this);
+    sb.parent.removeMouseListener (this);
 }
 
-void Scrollbar::InternalViewport::setContentArea(float width, float height)
+void Scrollbar::InternalViewport::setContentArea (float width, float height)
 {
-	content.setSize({width, height});
-	updatePosition();
+    content.setSize ({ width, height });
+    updatePosition();
 }
 
-void Scrollbar::InternalViewport::updatePosition()
+void Scrollbar::InternalViewport::updatePosition ()
 {
-	if(content.getHeight() > 0)
-	{
-		if(sb.t == Type::verticalScrollbar)
-			sb.setHandleSize(sb.parent.getHeight() / content.getHeight());
+    if (content.getHeight() > 0)
+    {
+        if (sb.t == Type::verticalScrollbar)
+            sb.setHandleSize (sb.parent.getHeight() / content.getHeight());
 
-		sb.updatePosition();
-	}
+        sb.updatePosition();
+    }
 }
 
-yup::Rectangle<float> Scrollbar::InternalViewport::getViewport() const
+yup::Rectangle<float> Scrollbar::InternalViewport::getViewport () const
 {
-	return content.transformed(transform);
+    return content.transformed (transform);
 }
 
-yup::Rectangle<float> Scrollbar::InternalViewport::getVisibleArea() const
+yup::Rectangle<float> Scrollbar::InternalViewport::getVisibleArea () const
 {
-	return sb.parent.getLocalBounds().transformed(transform.inverted());
+    return sb.parent.getLocalBounds().transformed (transform.inverted());
 }
 
-void Scrollbar::InternalViewport::scrollToShow(Range<float> yPos) const
+void Scrollbar::InternalViewport::scrollToShow (Range<float> yPos) const
 {
-	auto visibleArea = getVisibleArea();
+    auto visibleArea = getVisibleArea();
 
-	Range<float> yRange(visibleArea.getY(), visibleArea.getBottomLeft().getY());
+    Range<float> yRange (visibleArea.getY(), visibleArea.getBottomLeft().getY());
 
-	if(!yRange.intersects(yPos))
-	{
-		if(yPos.getStart() < visibleArea.getY())
-		{
-			auto normPos = yPos.getStart() / (content.getHeight() - yRange.getLength());
-			sb.setPosition(normPos, sendNotification);
-		}
-		else
-		{
-			auto normPos = (yPos.getEnd() - yRange.getLength()) / (content.getHeight() - yRange.getLength());
-			sb.setPosition(normPos, sendNotification);
-		}
-
-
-	}
+    if (! yRange.intersects (yPos))
+    {
+        if (yPos.getStart() < visibleArea.getY())
+        {
+            auto normPos = yPos.getStart() / (content.getHeight() - yRange.getLength());
+            sb.setPosition (normPos, sendNotification);
+        }
+        else
+        {
+            auto normPos = (yPos.getEnd() - yRange.getLength()) / (content.getHeight() - yRange.getLength());
+            sb.setPosition (normPos, sendNotification);
+        }
+    }
 }
 
-bool Scrollbar::InternalViewport::mouseWheel(const MouseEvent& event, const MouseWheelData& wheelData)
+bool Scrollbar::InternalViewport::mouseWheel (const MouseEvent& event, const MouseWheelData& wheelData)
 {
-	auto before = sb.currentPosition;
-	sb.mouseWheel(event, wheelData);
-	return sb.currentPosition != before;
+    auto before = sb.currentPosition;
+    sb.mouseWheel (event, wheelData);
+    return sb.currentPosition != before;
 }
 
-void Scrollbar::InternalViewport::onScroll(Type t, double newPos)
+void Scrollbar::InternalViewport::onScroll (Type t, double newPos)
 {
-	positionViewport(t, sb.parent, newPos);
+    positionViewport (t, sb.parent, newPos);
 }
 
-void Scrollbar::InternalViewport::positionViewport(yup::Scrollbar::Type t, Component& c, double newPos)
+void Scrollbar::InternalViewport::positionViewport (yup::Scrollbar::Type t, Component& c, double newPos)
 {
-	if(t == yup::Scrollbar::Type::verticalScrollbar)
-		transform = transform.translation(transform.getTranslateX(), -1.0f * newPos * (content.getHeight() - c.getHeight()));
+    if (t == yup::Scrollbar::Type::verticalScrollbar)
+        transform = transform.translation (transform.getTranslateX(), -1.0f * newPos * (content.getHeight() - c.getHeight()));
 
-	if(resizeOnScroll)
-		c.resized();
-	else
-		c.repaint();
+    if (resizeOnScroll)
+        c.resized();
+    else
+        c.repaint();
 }
 
-Scrollbar::Scrollbar(Type t_, Component& parent_):
-	t(t_),
-	parent(parent_)
+Scrollbar::Scrollbar (Type t_, Component& parent_)
+    : t (t_)
+    , parent (parent_)
 {
-	parent.addAndMakeVisible(*this);
+    parent.addAndMakeVisible (*this);
 }
 
-void Scrollbar::mouseDown(const MouseEvent& event)
+void Scrollbar::mouseDown (const MouseEvent& event)
 {
-	updateFromEvent(event, false);
-	down = true;
-	lastPos = currentPosition;
-	repaint();
-	startTimer(15);
+    updateFromEvent (event, false);
+    down = true;
+    lastPos = currentPosition;
+    repaint();
+    startTimer (15);
 }
 
-void Scrollbar::mouseUp(const MouseEvent& event)
+void Scrollbar::mouseUp (const MouseEvent& event)
 {
-	down = false;
-	repaint();
+    down = false;
+    repaint();
 }
 
-void Scrollbar::setHandleSize(double normalisedHandleSize)
+void Scrollbar::setHandleSize (double normalisedHandleSize)
 {
-	handleSize = normalisedHandleSize;
-	repaint();
-	setVisible(handleSize < 1.0);
+    handleSize = normalisedHandleSize;
+    repaint();
+    setVisible (handleSize < 1.0);
 
-	if(!isVisible() && currentPosition != 0.0)
-		setPosition(0.0, sendNotification);
+    if (! isVisible() && currentPosition != 0.0)
+        setPosition (0.0, sendNotification);
 }
 
-void Scrollbar::timerCallback()
+void Scrollbar::timerCallback ()
 {
-	velocity = 0.6f * velocity + 0.4f * (currentPosition - lastPos);
-	lastPos = currentPosition;
+    velocity = 0.6f * velocity + 0.4f * (currentPosition - lastPos);
+    lastPos = currentPosition;
 
-	if(!down)
-	{
-		velocity *= 0.9f;
-		currentPosition += velocity;
+    if (! down)
+    {
+        velocity *= 0.9f;
+        currentPosition += velocity;
 
-		setPosition(currentPosition, sendNotification);
+        setPosition (currentPosition, sendNotification);
 
-		if(std::abs(velocity) < 0.002f)
-			stopTimer();
-	}
-
+        if (std::abs (velocity) < 0.002f)
+            stopTimer();
+    }
 }
 
-void Scrollbar::mouseWheel(const MouseEvent& event, const MouseWheelData& wheelData)
+void Scrollbar::mouseWheel (const MouseEvent& event, const MouseWheelData& wheelData)
 {
-	auto newPos = jlimit(0.0, 1.0, currentPosition - (double)wheelData.getDeltaY() * 0.05);
-	setPosition(newPos, sendNotification);
+    auto newPos = jlimit (0.0, 1.0, currentPosition - (double) wheelData.getDeltaY() * 0.05);
+    setPosition (newPos, sendNotification);
 }
 
-void Scrollbar::setPosition(double normalisedHandlePosition, juce::NotificationType notify)
+void Scrollbar::setPosition (double normalisedHandlePosition, juce::NotificationType notify)
 {
-	currentPosition = jlimit(0.0, 1.0, normalisedHandlePosition);
+    currentPosition = jlimit (0.0, 1.0, normalisedHandlePosition);
 
-	if(notify)
-		listeners.call([this](Listener& l){ l.onScroll(this->t, this->currentPosition); });
+    if (notify)
+        listeners.call ([this](Listener& l) { l.onScroll (this->t, this->currentPosition); });
 
-	repaint();
+    repaint();
 }
 
-void Scrollbar::updateFromEvent(const MouseEvent& e, bool updateIfInside)
+void Scrollbar::updateFromEvent (const MouseEvent& e, bool updateIfInside)
 {
-	auto p = getBounds().getTopLeft();
-	auto ep = e.getPosition();
-	auto lp = ep - p;
+    auto p = getBounds().getTopLeft();
+    auto ep = e.getPosition();
+    auto lp = ep - p;
 
-	double normPos;
-        
-	if(t == Type::verticalScrollbar)
-		normPos = lp.getY() / ((1.0 - handleSize) * getHeight());
-	else
-		normPos = lp.getX() / ((1.0 - handleSize) * getWidth());
+    double normPos;
 
-	normPos -= 0.5 * handleSize;
-	normPos = jlimit(0.0, 1.0, normPos);
+    if (t == Type::verticalScrollbar)
+        normPos = lp.getY() / ((1.0 - handleSize) * getHeight());
+    else
+        normPos = lp.getX() / ((1.0 - handleSize) * getWidth());
 
-	if(updateIfInside || !Range<double>(currentPosition - 0.5 * handleSize, currentPosition + 0.5 * handleSize).contains(normPos))
-		setPosition(normPos, sendNotification);
+    normPos -= 0.5 * handleSize;
+    normPos = jlimit (0.0, 1.0, normPos);
+
+    if (updateIfInside || ! Range<double> (currentPosition - 0.5 * handleSize, currentPosition + 0.5 * handleSize).contains (normPos))
+        setPosition (normPos, sendNotification);
 }
 
-void Scrollbar::mouseDrag(const MouseEvent& event)
+void Scrollbar::mouseDrag (const MouseEvent& event)
 {
-	updateFromEvent(event, true);
+    updateFromEvent (event, true);
 }
 
-void Scrollbar::mouseEnter(const MouseEvent& event)
+void Scrollbar::mouseEnter (const MouseEvent& event)
 {
-	over = true;
-	repaint();
+    over = true;
+    repaint();
 }
 
-void Scrollbar::mouseExit(const MouseEvent& event)
+void Scrollbar::mouseExit (const MouseEvent& event)
 {
-	over = false;
-	repaint();
+    over = false;
+    repaint();
 }
 
-void Scrollbar::updatePosition()
+void Scrollbar::updatePosition ()
 {
-	auto b = parent.getLocalBounds();
+    auto b = parent.getLocalBounds();
 
-	if(t == Type::verticalScrollbar)
-		b = b.removeFromRight(Thickness);
-	else
-		b = b.removeFromBottom(Thickness);
+    if (t == Type::verticalScrollbar)
+        b = b.removeFromRight (Thickness);
+    else
+        b = b.removeFromBottom (Thickness);
 
-	setBounds(b);
+    setBounds (b);
 }
 
-void Scrollbar::paint(Graphics& g)
+void Scrollbar::paint (Graphics& g)
 {
-	auto b = getLocalBounds().reduced(1);
-        
-	g.setFillColor(Colors::white.withAlpha(over ? 0.1f : 0.0f));
-	g.fillAll();
+    auto b = getLocalBounds().reduced (1);
 
-	float alpha = 0.2f;
+    g.setFillColor (Colors::white.withAlpha (over ? 0.1f : 0.0f));
+    g.fillAll();
 
-	if(over)
-		alpha += 0.2f;
+    float alpha = 0.2f;
 
-	if(down)
-		alpha += 0.2f;
+    if (over)
+        alpha += 0.2f;
 
-	g.setFillColor(Colors::white.withAlpha(alpha));
-	auto cornerSize = jmin(b.getWidth() * 0.5f, b.getHeight() * 0.5f);
+    if (down)
+        alpha += 0.2f;
 
-	b = b.removeFromTop(handleSize * b.getHeight()).withY(currentPosition * (getHeight() * (1.0 - handleSize)));
+    g.setFillColor (Colors::white.withAlpha (alpha));
+    auto cornerSize = jmin (b.getWidth() * 0.5f, b.getHeight() * 0.5f);
 
-	g.fillRoundedRect(b, cornerSize);
+    b = b.removeFromTop (handleSize * b.getHeight()).withY (currentPosition * (getHeight() * (1.0 - handleSize)));
+
+    g.fillRoundedRect (b, cornerSize);
 }
 
-void Scrollbar::addListener(Listener* l)
+void Scrollbar::addListener (Listener* l)
 {
-	listeners.add(l);
+    listeners.add (l);
 }
 
-void Scrollbar::removeListener(Listener* l)
+void Scrollbar::removeListener (Listener* l)
 {
-	listeners.remove(l);
+    listeners.remove (l);
 }
-
 } // namespace yup

@@ -28,7 +28,6 @@ struct UndoManager;
 
 namespace yup
 {
-
 /** A tree data model with undo support & listeners.
  *
  *  This is a recreation of the juce::ValueTree with a few modifications:
@@ -50,116 +49,112 @@ namespace yup
 class JUCE_API DataModelTree
 {
 public:
-    
     // ==============================================================================================
     // Constructors & Destructor
 
     /** Creates an empty value tree. */
-    DataModelTree() = default;
+    DataModelTree () = default;
 
     /** Creates a ValueTree with a given type and an undo manager. */
-    DataModelTree(const Identifier& id, UndoManager* um=nullptr);
+    DataModelTree (const Identifier& id, UndoManager* um = nullptr);
 
     /** Creates a value tree that references another value tree. It will not copy its listeners!. */
-    DataModelTree(const DataModelTree& other):
-	  data(other.data)
-    {};
+    DataModelTree (const DataModelTree& other);;
 
-    ~DataModelTree();
+    ~DataModelTree ();
 
     /** Assigns a value tree to another value tree. It will not copy its listeners!. */
-    DataModelTree& operator=(const DataModelTree& other);
+    DataModelTree& operator= (const DataModelTree& other);
 
     /** Moves a value tree to another value tree and transfers the listeners. */
-    DataModelTree(DataModelTree&& other) noexcept;;
-    
+    DataModelTree (DataModelTree&& other) noexcept;;
+
     /** Moves a value tree to another value tree and transfers the listeners. */
-    DataModelTree& operator=(DataModelTree&& other) noexcept;
+    DataModelTree& operator= (DataModelTree&& other) noexcept;
 
     // ==============================================================================================
     // Methods for ID
 
     /** This will check whether the value tree points to a valid data object. */
-    operator bool() const { return data != nullptr; }
+    operator bool () const { return data != nullptr; }
 
     /** Returns the type of the ValueTree. */
-    Identifier getType() const;
+    Identifier getType () const;
 
     // ==============================================================================================
     // Methods for children
 
     /** Returns the number of (immediate) child trees. */
-    int getNumChildren() const noexcept
+    int getNumChildren () const noexcept
     {
-	    if(*this) 
+        if (*this)
             return data->children.size();
         else
             return 0;
     }
 
     /** Returns the child at the given index. */
-    DataModelTree getChild(int index) const;
+    DataModelTree getChild (int index) const;
 
-    DataModelTree getChildWithName(const Identifier& id) const;
+    DataModelTree getChildWithName (const Identifier& id) const;
 
     /** Gets the parent node. */
-    DataModelTree getParent() const;
+    DataModelTree getParent () const;
 
     /** Gets the root node. */
-    DataModelTree getRoot() const;
+    DataModelTree getRoot () const;
 
     /** Checks if a child with the given ID exists and creates one if not, then returns the child. */
-    DataModelTree getOrCreateChildWithName(const Identifier& id);
+    DataModelTree getOrCreateChildWithName (const Identifier& id);
 
     /** Adds the child to the tree at the specified position. */
-    DataModelTree addChild(const DataModelTree& child, int index=-1);
+    DataModelTree addChild (const DataModelTree& child, int index = -1);
 
-    bool isChildOf(const DataModelTree& possibleParent) const
+    bool isChildOf (const DataModelTree& possibleParent) const
     {
-	    if(*this)
+        if (*this)
             return data->parent.get() == possibleParent.data.get();
 
         return false;
     }
 
-    int indexOf(const DataModelTree& child)
+    int indexOf (const DataModelTree& child)
     {
-	    if(*this)
-		    return data->children.indexOf(child.data);
+        if (*this)
+            return data->children.indexOf (child.data);
 
         return -1;
     }
-    
+
     /** Removes the child from the tree. */
-    bool removeChild(const DataModelTree& child);
+    bool removeChild (const DataModelTree& child);
 
     struct ChildIterator
     {
-        ChildIterator() = default;
+        ChildIterator () = default;
 
-	    ChildIterator(const DataModelTree& p);
+        ChildIterator (const DataModelTree& p);
 
-	    DataModelTree* begin();
-	    DataModelTree* end();
-	    const DataModelTree* begin() const;
-	    const DataModelTree* end() const;
+        DataModelTree* begin ();
+        DataModelTree* end ();
+        const DataModelTree* begin () const;
+        const DataModelTree* end () const;
 
     private:
-
-	    std::vector<DataModelTree> children;
+        std::vector<DataModelTree> children;
     };
 
     /** Returns an object that can be used to iterate through the children with a range-based for-loop */
-    ChildIterator getChildren() const;
+    ChildIterator getChildren () const;
 
     // ==============================================================================================
     // Recursive iteration
 
     /** Recursively calls the given lambda for this value tree and every child tree. */
-    bool forEach(const std::function<bool(DataModelTree&)>& f);
+    bool forEach (const std::function<bool (DataModelTree&)>& f);
 
     /** Recursively calls the given lambda for this value tree and every parent. */
-    bool forEachParent(const std::function<bool(DataModelTree&)>& f);
+    bool forEachParent (const std::function<bool (DataModelTree&)>& f);
 
     // ==============================================================================================
     // Listener methods & class definitions
@@ -167,113 +162,114 @@ public:
     class ListenerBase
     {
     public:
-
         enum Type
-	    {
-		    NotifyAtChildEvents,
-	        NotifyAtOwnEvents
-	    };
-
-        ListenerBase(Type t):
-          type(t)
-        {};
-
-	    virtual ~ListenerBase()
-	    {
-            jassert(numAttachments == 0);
-	    }
-
-        Type getListenerType() const { return type; }
-
-        virtual bool isDangling() const { return false; }
-
-        void attach(bool addAsListener)
         {
-	        numAttachments += addAsListener ? 1 : -1;
-            numAttachments = jmax(0, numAttachments);
+            NotifyAtChildEvents,
+            NotifyAtOwnEvents
+        };
+
+        ListenerBase (Type t)
+            : type (t)
+        {
+        };
+
+        virtual ~ListenerBase ()
+        {
+            jassert (numAttachments == 0);
+        }
+
+        Type getListenerType () const { return type; }
+
+        virtual bool isDangling () const { return false; }
+
+        void attach (bool addAsListener)
+        {
+            numAttachments += addAsListener ? 1 : -1;
+            numAttachments = jmax (0, numAttachments);
         }
 
     private:
-
         int numAttachments = 0;
 
         const Type type;
     };
 
-    class ChildListener: public ListenerBase
+    class ChildListener : public ListenerBase
     {
     public:
+        ChildListener (Type type_ = Type::NotifyAtOwnEvents)
+            : ListenerBase (type_)
+        {
+        }
 
-        ChildListener(Type type_=Type::NotifyAtOwnEvents):
-          ListenerBase(type_)
-        {}
+        ~ChildListener () override
+        {
+        };
 
-        ~ChildListener() override {};
-
-        virtual void childAddedOrRemoved(DataModelTree& v, bool wasAdded) = 0;
+        virtual void childAddedOrRemoved (DataModelTree& v, bool wasAdded) = 0;
     };
 
     // ==============================================================================================
 
-    class PropertyListener: public ListenerBase
+    class PropertyListener : public ListenerBase
     {
     public:
+        ~PropertyListener () override
+        {
+        };
 
-    	~PropertyListener() override {};
+        PropertyListener (Type t = Type::NotifyAtOwnEvents, const Array<Identifier>& ids_ = {});
 
-        PropertyListener(Type t=Type::NotifyAtOwnEvents, const Array<Identifier>& ids_={});
+        virtual void propertyChanged (const DataModelTree& changedTree, const Identifier& id) = 0;
 
-	    virtual void propertyChanged(const DataModelTree& changedTree, const Identifier& id) = 0;
-
-        bool matches(const Identifier& id) const noexcept { return ids.isEmpty() || ids.contains(id); }
+        bool matches (const Identifier& id) const noexcept { return ids.isEmpty() || ids.contains (id); }
 
     private:
-
         Array<Identifier> ids;
     };
 
     // ==============================================================================================
 
-    template <typename WeakReferenceable> class LambdaPropertyListener: public PropertyListener
+    template <typename WeakReferenceable>
+    class LambdaPropertyListener : public PropertyListener
     {
     public:
+        using Callback = std::function<void (WeakReferenceable& obj, const DataModelTree& v, const Identifier& id)>;
 
-        using Callback = std::function<void(WeakReferenceable& obj, const DataModelTree& v, const Identifier& id)>;
+        LambdaPropertyListener (WeakReferenceable& obj_, Type type, const Array<Identifier>& ids, const Callback& f_);
 
-        LambdaPropertyListener(WeakReferenceable& obj_, Type type, const Array<Identifier>& ids, const Callback& f_);
-
-        bool isDangling() const override { return obj.get() == nullptr; }
+        bool isDangling () const override { return obj.get() == nullptr; }
 
     private:
-
-        void propertyChanged(const DataModelTree& changedTree, const Identifier& id) override;
+        void propertyChanged (const DataModelTree& changedTree, const Identifier& id) override;
 
         WeakReference<WeakReferenceable> obj;
         Callback f;
-        
     };
 
     /** Adds a listener that will be notified whenever a property changes. */
-    void addPropertyListener(PropertyListener* pl);
+    void addPropertyListener (PropertyListener* pl);
 
     /** Removes the listener. */
-    void removePropertyListener(PropertyListener* pl);
+    void removePropertyListener (PropertyListener* pl);
 
     /** Adds a listener that will be notified whenever a child was added. */
-    void addChildListener(ChildListener* cl);
+    void addChildListener (ChildListener* cl);
 
     /** Removes the listener. */
-    void removeChildListener(ChildListener* cl);
-    
+    void removeChildListener (ChildListener* cl);
+
     /** Adds a listener that will check if the weak referenceable obj exists, and then call the given lambda if one of the properties
      *  have changed.
      */
-    template <typename T> void addLambdaPropertyListenerT(T& obj, ListenerBase::Type type, const Array<Identifier>& ids, const typename LambdaPropertyListener<T>::Callback& f);
+    template <typename T>
+    void addLambdaPropertyListenerT (T& obj, ListenerBase::Type type, const Array<Identifier>& ids, const typename LambdaPropertyListener<T>::Callback& f);
 
-    void addLambdaPropertyListener(ListenerBase::Type type, const Array<Identifier>& ids,
-                                   const LambdaPropertyListener<DataModelTree>::Callback& f)
+    void addLambdaPropertyListener (ListenerBase::Type type,
+                                    const Array<Identifier>& ids,
+                                    const LambdaPropertyListener<DataModelTree>::Callback& f)
     {
-        addLambdaPropertyListenerT<DataModelTree>(*this, type, ids, f);
+        addLambdaPropertyListenerT<DataModelTree> (*this, type, ids, f);
     }
 
     // ==============================================================================================
@@ -283,62 +279,62 @@ public:
      *  You will never create this yourself, but use the operator[] or the range-based iterator from
      *  getProperties() for accessing the property.
      */
-    template <typename ValueTreeRefType> struct Property
+    template <typename ValueTreeRefType>
+    struct Property
     {
         /** Creates an empty property. */
-        Property() = default;
+        Property () = default;
 
         /** Creates a property that can be used to access the parent data. */
-		Property(ValueTreeRefType& parent_, const Identifier& id_);
+        Property (ValueTreeRefType& parent_, const Identifier& id_);
 
         /** Writes the property using the undo manager. */
-	    Property<DataModelTree>& operator=(const var& newValue);
+        Property<DataModelTree>& operator= (const var& newValue);
 
         /** Checks if the value is defined. */
-        bool isDefined() const noexcept;
+        bool isDefined () const noexcept;
 
         /** Checks if the property is pointing to a valid object. It can stil be undefined. */
-        operator bool() const;
+        operator bool () const;
 
         /** Returns the id of the property. */
-        Identifier getIdentifier() const;
+        Identifier getIdentifier () const;
 
         /** Returns the (current) value of the property. */
-        var get(const var& defaultValue={}) const;
+        var get (const var& defaultValue = {}) const;
 
         /** Returns the (current) value of the property. */
-        explicit operator var() const;
+        explicit operator var () const;
 
     private:
-
         Identifier id;
         ValueTreeRefType* parent;
     };
 
     /** This is a class that can be used to iterate through the properties of a ValueTree. */
-    template <typename ValueTreeRefType> struct PropertyIterator
+    template <typename ValueTreeRefType>
+    struct PropertyIterator
     {
         /** Creates a value tree iterator. */
-	    PropertyIterator(ValueTreeRefType& parent);
+        PropertyIterator (ValueTreeRefType& parent);
 
         /** Returns the property for the given ID. */
-        Property<ValueTreeRefType> operator[](const Identifier& id);
+        Property<ValueTreeRefType> operator[] (const Identifier& id);
 
         /** Returns the number of properties. */
-	    int size() const;
+        int size () const;
 
         /** Returns the property reference at the given index. The index must be 0 < index < numProperties. */
-	    Property<ValueTreeRefType>& operator[](int index)
-	    {
-		    jassert(isPositiveAndBelow(index, properties.size()));
+        Property<ValueTreeRefType>& operator[] (int index)
+        {
+            jassert (isPositiveAndBelow(index, properties.size()));
             return *(properties.getRawDataPointer() + index);
-	    }
+        }
 
-	    Property<ValueTreeRefType>* begin();
-	    Property<ValueTreeRefType>* end();
+        Property<ValueTreeRefType>* begin ();
+        Property<ValueTreeRefType>* end ();
 
     private:
-
         Array<Property<ValueTreeRefType>> properties;
         ValueTreeRefType& parent;
     };
@@ -347,22 +343,22 @@ public:
     // Property methods
 
     /** Creates a write access property with the given Identifier. */
-    Property<DataModelTree> operator[](const Identifier& id);
+    Property<DataModelTree> operator[] (const Identifier& id);
 
     /** Creates a readonly access property with the given Identifier. */
-    Property<const DataModelTree> operator[](const Identifier& id) const;
+    Property<const DataModelTree> operator[] (const Identifier& id) const;
 
     /** Creates a write access property with the given id. */
-    Property<DataModelTree> operator[](const char* id);
+    Property<DataModelTree> operator[] (const char* id);
 
     /** Creates a readonly access property with the given id. */
-    Property<const DataModelTree> operator[](const char* id) const;
+    Property<const DataModelTree> operator[] (const char* id) const;
 
     /** Creates a write access property iterator. */
-    PropertyIterator<DataModelTree> getProperties();
+    PropertyIterator<DataModelTree> getProperties ();
 
     /** Creates a read access property iterator. */
-    PropertyIterator<const DataModelTree> getProperties() const;
+    PropertyIterator<const DataModelTree> getProperties () const;
 
     // ==============================================================================================
     // I/O methods
@@ -374,40 +370,39 @@ public:
      *  Call this on the root value tree and it will register an internal listener that updates
      *  the data on each change.
      */
-    void setCreateDebugModel();
+    void setCreateDebugModel ();
 
     /** Creates a XML element from the ValueTree. */
-    std::unique_ptr<juce::XmlElement> createXml() const;
+    std::unique_ptr<juce::XmlElement> createXml () const;
 
     /** Creates a ValueTree from the XML element. */
-    static DataModelTree fromXml(XmlElement& xml, UndoManager* um=nullptr);
+    static DataModelTree fromXml (XmlElement& xml, UndoManager* um = nullptr);
 
-    void writeToStream(OutputStream& out);
+    void writeToStream (OutputStream& out);
 
-    static DataModelTree fromInputStream(InputStream& input);
+    static DataModelTree fromInputStream (InputStream& input);
 
-    void dump();
+    void dump ();
 
 private:
-
     friend class ValueTreeAdapter;
 
     struct DebugDataListener;
     struct DebugDataModel;
 
-    struct DataObject: public ReferenceCountedObject
-	{
+    struct DataObject : public ReferenceCountedObject
+    {
         using Ptr = ReferenceCountedObjectPtr<DataObject>;
         using List = ReferenceCountedArray<DataObject>;
 
-        DataObject(const Identifier& id_, UndoManager* um);;
+        DataObject (const Identifier& id_, UndoManager* um);;
 
-        void add(Ptr child, int index);
+        void add (Ptr child, int index);
 
-        bool remove(Ptr child);
+        bool remove (Ptr child);
 
         Identifier id;
-		NamedValueSet properties;
+        NamedValueSet properties;
         yup::UndoManager* undoManager;
 
         List children;
@@ -415,42 +410,42 @@ private:
 
         struct Listeners
         {
-	        OwnedArray<PropertyListener> lambdaPropertyListeners;
-		    ListenerList<PropertyListener> propertyListeners;
-		    ListenerList<ChildListener> childListeners;
+            OwnedArray<PropertyListener> lambdaPropertyListeners;
+            ListenerList<PropertyListener> propertyListeners;
+            ListenerList<ChildListener> childListeners;
         };
 
-    	std::unique_ptr<Listeners> listeners;
-        
-        JUCE_DECLARE_WEAK_REFERENCEABLE(DataObject);
-        
-	};
+        std::unique_ptr<Listeners> listeners;
+
+        JUCE_DECLARE_WEAK_REFERENCEABLE (DataObject);
+    };
 
     /** @internal */
-    explicit DataModelTree(DataObject::Ptr p):
-      data(p)
-    {}
+    explicit DataModelTree (DataObject::Ptr p)
+        : data (p)
+    {
+    }
 
     /** @internal */
-    void perform(const std::function<bool(DataModelTree& , bool)>& f);
+    void perform (const std::function<bool (DataModelTree&, bool)>& f);
 
     /** @internal */
-    void sendChildChangeMessage(DataModelTree& child, bool wasAdded);
+    void sendChildChangeMessage (DataModelTree& child, bool wasAdded);
 
     /** @internal */
-    void sendPropertyChangeMessage(const DataModelTree& v, const Identifier& id);
+    void sendPropertyChangeMessage (const DataModelTree& v, const Identifier& id);
 
     /** @internal */
-    DataObject::Listeners* getListeners(bool createIfNotExist);
+    DataObject::Listeners* getListeners (bool createIfNotExist);
 
-#if JUCE_DEBUG
-	DebugDataModel* debugData;
+    #if JUCE_DEBUG
+    DebugDataModel* debugData;
     std::unique_ptr<ChildListener> debugDataListener;
-#endif
+    #endif
 
     DataObject::Ptr data;
 
-    JUCE_DECLARE_WEAK_REFERENCEABLE(DataModelTree);
+    JUCE_DECLARE_WEAK_REFERENCEABLE (DataModelTree);
 };
 
 
@@ -478,193 +473,214 @@ private:
  */
 struct ValueTreeAdapter
 {
-    struct Listener: public DataModelTree::PropertyListener,
-					 public DataModelTree::ChildListener
+    struct Listener
+        : public DataModelTree::PropertyListener,
+          public DataModelTree::ChildListener
     {
-        Listener():
-          PropertyListener(Type::NotifyAtChildEvents, {}),
-          ChildListener(Type::NotifyAtChildEvents)
-        {}
-
-        virtual ~Listener() {};
-
-	    virtual void valueTreePropertyChanged (ValueTreeAdapter& t, const Identifier& id) {};
-        virtual void valueTreeChildAdded (ValueTreeAdapter& p, ValueTreeAdapter& c) {};
-        virtual void valueTreeChildRemoved (ValueTreeAdapter& p, ValueTreeAdapter& c, int index) {};
-        virtual void valueTreeChildOrderChanged (ValueTreeAdapter& p, int oldIndex, int newIndex) {};
-        virtual void valueTreeParentChanged (ValueTreeAdapter& p) {};
-        virtual void valueTreeRedirected (ValueTreeAdapter& t) {};
-
-        void propertyChanged(const DataModelTree& changedTree, const Identifier& id) override
+        Listener ()
+            : PropertyListener (Type::NotifyAtChildEvents, {})
+            , ChildListener (Type::NotifyAtChildEvents)
         {
-	        ValueTreeAdapter t(changedTree);
-            valueTreePropertyChanged(t, id);
         }
 
-        void childAddedOrRemoved(DataModelTree& v, bool wasAdded) override
+        virtual ~Listener ()
         {
-	        ValueTreeAdapter c(v);
-            ValueTreeAdapter p(v.getParent());
-            auto index = p.indexOf(c);
+        };
 
-            if(wasAdded)
-                valueTreeChildAdded(p, c);
+        virtual void valueTreePropertyChanged (ValueTreeAdapter& t, const Identifier& id)
+        {
+        };
+
+        virtual void valueTreeChildAdded (ValueTreeAdapter& p, ValueTreeAdapter& c)
+        {
+        };
+
+        virtual void valueTreeChildRemoved (ValueTreeAdapter& p, ValueTreeAdapter& c, int index)
+        {
+        };
+
+        virtual void valueTreeChildOrderChanged (ValueTreeAdapter& p, int oldIndex, int newIndex)
+        {
+        };
+
+        virtual void valueTreeParentChanged (ValueTreeAdapter& p)
+        {
+        };
+
+        virtual void valueTreeRedirected (ValueTreeAdapter& t)
+        {
+        };
+
+        void propertyChanged (const DataModelTree& changedTree, const Identifier& id) override
+        {
+            ValueTreeAdapter t (changedTree);
+            valueTreePropertyChanged (t, id);
+        }
+
+        void childAddedOrRemoved (DataModelTree& v, bool wasAdded) override
+        {
+            ValueTreeAdapter c (v);
+            ValueTreeAdapter p (v.getParent());
+            auto index = p.indexOf (c);
+
+            if (wasAdded)
+                valueTreeChildAdded (p, c);
             else
-                valueTreeChildRemoved(p, c, index);
-
+                valueTreeChildRemoved (p, c, index);
         }
     };
 
-    ValueTreeAdapter(DataModelTree& data_):
-      data(data_)
-    {}
-
-    ~ValueTreeAdapter()
+    ValueTreeAdapter (DataModelTree& data_)
+        : data (data_)
     {
-	    for(auto& l: listeners)
-	    {
-		    removeListener(l);
-	    }
+    }
+
+    ~ValueTreeAdapter ()
+    {
+        for (auto& l : listeners)
+        {
+            removeListener (l);
+        }
 
         listeners.clear();
     }
 
-    ValueTreeAdapter(const DataModelTree& data_):
-      data(*const_cast<DataModelTree*>(&data_))
-    {}
-
-    var getProperty(const Identifier& id) const
+    ValueTreeAdapter (const DataModelTree& data_)
+        : data (*const_cast<DataModelTree*> (&data_))
     {
-	    return data[id].get();
     }
 
-	void setProperty(const Identifier& id, const var& newValue, juce::UndoManager* um)
-	{
-        performWithUndo(um, [id, newValue](DataModelTree& d)
-        {
-	        d[id] = newValue;
-        });
-	}
-
-    void addChild(const ValueTreeAdapter& child, int index, juce::UndoManager* um)
+    var getProperty (const Identifier& id) const
     {
-	    performWithUndo(um, [child, index](DataModelTree& d)
-	    {
-		    d.addChild(child.get(), index);
-	    });
+        return data[id].get();
     }
 
-    void removeChild(const ValueTreeAdapter& child, juce::UndoManager* um)
+    void setProperty (const Identifier& id, const var& newValue, juce::UndoManager* um)
     {
-	    performWithUndo(um, [child](DataModelTree& d)
-	    {
-		    d.removeChild(child.get());
-	    });
+        performWithUndo (um,
+                         [id, newValue](DataModelTree& d)
+                         {
+                             d[id] = newValue;
+                         });
     }
 
-    int indexOf(const ValueTreeAdapter& child)
+    void addChild (const ValueTreeAdapter& child, int index, juce::UndoManager* um)
     {
-	    return get().indexOf(child.get());
+        performWithUndo (um,
+                         [child, index](DataModelTree& d)
+                         {
+                             d.addChild (child.get(), index);
+                         });
     }
 
-    ValueTreeAdapter getChildWithName(const Identifier& id) const
+    void removeChild (const ValueTreeAdapter& child, juce::UndoManager* um)
     {
-        auto c = data.getChildWithName(id);
-	    return ValueTreeAdapter(c);
+        performWithUndo (um,
+                         [child](DataModelTree& d)
+                         {
+                             d.removeChild (child.get());
+                         });
     }
 
-    Identifier getType() const noexcept { return data.getType(); }
-
-    bool operator==(const ValueTreeAdapter& other) const noexcept
+    int indexOf (const ValueTreeAdapter& child)
     {
-	    return getData() == other.getData();
+        return get().indexOf (child.get());
     }
 
-    bool operator !=(const ValueTreeAdapter& other) const noexcept
+    ValueTreeAdapter getChildWithName (const Identifier& id) const
     {
-	    return !((*this) == other);
+        auto c = data.getChildWithName (id);
+        return ValueTreeAdapter (c);
     }
 
-    bool isValid() const noexcept
+    Identifier getType () const noexcept { return data.getType(); }
+
+    bool operator== (const ValueTreeAdapter& other) const noexcept
     {
-	    return (bool)data;
+        return getData() == other.getData();
     }
 
-    bool isEquivalentTo(const ValueTreeAdapter& other) const noexcept
+    bool operator != (const ValueTreeAdapter& other) const noexcept
     {
-	    return getData() == other.getData();
+        return ! ((*this) == other);
     }
 
-    ValueTreeAdapter getRoot() const
+    bool isValid () const noexcept
+    {
+        return (bool) data;
+    }
+
+    bool isEquivalentTo (const ValueTreeAdapter& other) const noexcept
+    {
+        return getData() == other.getData();
+    }
+
+    ValueTreeAdapter getRoot () const
     {
         auto r = data.getRoot();
-	    return ValueTreeAdapter(r);
+        return ValueTreeAdapter (r);
     }
 
-    var operator[](const Identifier& id) const noexcept
+    var operator[] (const Identifier& id) const noexcept
     {
-	    return data[id].get();
+        return data[id].get();
     }
 
-    void addListener(Listener* l)
+    void addListener (Listener* l)
     {
-        if(listeners.addIfNotAlreadyThere(l))
+        if (listeners.addIfNotAlreadyThere (l))
         {
-	        get().addPropertyListener(l);
-			get().addChildListener(l);
+            get().addPropertyListener (l);
+            get().addChildListener (l);
         }
-	    
     }
 
-    void removeListener(Listener* l)
+    void removeListener (Listener* l)
     {
-        if(listeners.removeAllInstancesOf(l) == 1)
+        if (listeners.removeAllInstancesOf (l) == 1)
         {
-	        get().removePropertyListener(l);
-			get().removeChildListener(l);
+            get().removePropertyListener (l);
+            get().removeChildListener (l);
         }
     }
 
 private:
-
     Array<Listener*> listeners;
 
-    DataModelTree::DataObject::Ptr getData() const { return data.data; }
-    
-    DataModelTree& get() { return data; }
-    const DataModelTree& get() const { return data; }
+    DataModelTree::DataObject::Ptr getData () const { return data.data; }
+
+    DataModelTree& get () { return data; }
+    const DataModelTree& get () const { return data; }
 
     /** @internal */
-    void performWithUndo(juce::UndoManager* um, const std::function<void(DataModelTree&)>& f)
+    void performWithUndo (juce::UndoManager* um, const std::function<void (DataModelTree&)>& f)
     {
         // This function will check whether the call is supposed to be undoable
         // and then either use the undo function of the DataModelTree or suspend the undo manager
         // for the action
-	    bool wantsUndoManager = um != nullptr;
+        bool wantsUndoManager = um != nullptr;
         bool dataModelHasUndoManager = data.data->undoManager != nullptr;
 
-        if(wantsUndoManager == dataModelHasUndoManager)
+        if (wantsUndoManager == dataModelHasUndoManager)
         {
             // has undomanager, expects undomanager, everything's fine
-            f(data);
+            f (data);
         }
-        else if (!dataModelHasUndoManager && wantsUndoManager)
+        else if (! dataModelHasUndoManager && wantsUndoManager)
         {
             // nope, you've called this method assuming that there's an undo manager!
-	        jassertfalse;
+            jassertfalse;
         }
-        else if (dataModelHasUndoManager && !wantsUndoManager)
+        else if (dataModelHasUndoManager && ! wantsUndoManager)
         {
             // There's an undo manager, but we don't want to use it...
-            yup::UndoManager::ScopedDeactivator sd(*data.data->undoManager);
-	        f(data);
+            yup::UndoManager::ScopedDeactivator sd (*data.data->undoManager);
+            f (data);
         }
     }
 
     DataModelTree& data;
 };
-
-
 } // namespace yup;
 
 #include "yup_ValueTree_impl.h"

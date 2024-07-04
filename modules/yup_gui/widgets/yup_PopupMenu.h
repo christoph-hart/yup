@@ -21,41 +21,37 @@
 
 namespace yup
 {
-
 /** A base class for handling popup menus (context menus). You can either use the OS native menus or a custom component (TODO). */
 class JUCE_API PopupMenuBase
 {
 public:
+    virtual ~PopupMenuBase ()
+    {
+    };
 
-	virtual ~PopupMenuBase() {};
+    virtual void addSeparator () = 0;
 
-	virtual void addSeparator() = 0;
+    virtual void addItem (int itemId, const String& text, const String& shortCutString, bool isTicked = false, bool isActive = false) = 0;
 
-    virtual void addItem(int itemId, const String& text, const String& shortCutString, bool isTicked=false, bool isActive=false) = 0;
-
-    virtual void show(const std::function<bool(int)>& resultCallback) = 0;
+    virtual void show (const std::function<bool  (int)>& resultCallback) = 0;
 };
 
-class JUCE_API NativePopupMenu: public PopupMenuBase
+class JUCE_API NativePopupMenu : public PopupMenuBase
 {
 public:
+    NativePopupMenu (Component& parent);
 
-	NativePopupMenu(Component& parent);
+    ~NativePopupMenu () override;
 
-	~NativePopupMenu() override;
+    void addSeparator () override;
 
-	void addSeparator() override;
+    void addItem (int itemId, const String& text, const String& shortCutString = {}, bool isTicked = false, bool isActive = true) override;
 
-	void addItem(int itemId, const String& text, const String& shortCutString={}, bool isTicked=false, bool isActive=true) override;
-
-	void show(const std::function<bool(int)>& resultCallback) override;
+    void show (const std::function<bool  (int)>& resultCallback) override;
 
 private:
-
     // The implementation is in native/yup_Windows.cpp / native/yup_macOS.mm
-	struct Pimpl;
-	Pimpl* pimpl;
+    struct Pimpl;
+    Pimpl* pimpl;
 };
-
-
 }

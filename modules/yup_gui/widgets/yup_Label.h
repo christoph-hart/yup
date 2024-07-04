@@ -21,7 +21,6 @@
 
 namespace yup
 {
-
 /** A UI widget that displays text and lets you edit the content.
  *
  *  This is a merger of the juce::TextEditor and the juce::Label class. It implements most
@@ -41,70 +40,69 @@ namespace yup
  *  - the keyboard layout is not recognized (eg. Y / Z mixup between german and US layout).
  *
  */
-class JUCE_API Label: public yup::Component,
-					  public Timer
+class JUCE_API Label
+    : public yup::Component,
+      public Timer
 {
 public:
-
     struct Listener
     {
-        virtual ~Listener() {};
+        virtual ~Listener ();;
 
         /** This will be called on the message thread whenever the text changes. */
-	    virtual void labelTextChanged(Label& label) = 0;
+        virtual void labelTextChanged (Label& label) = 0;
     };
 
     // ===============================================================================
 
-    Label(const String& id={});;
+    Label (const String& id = {});;
 
     // ===============================================================================
 
-    void onTextInput(const String& textInput) override { insert(textInput); }
+    void onTextInput (const String& textInput) override { insert (textInput); }
 
-    void keyDown(const KeyPress& keys, const Point<float>& position) override;
-    void mouseDoubleClick(const MouseEvent& e) override;
-    void mouseDown(const MouseEvent& event) override;
-    void mouseDrag(const MouseEvent& event) override;
-
-    // ===============================================================================
-
-    void paint(Graphics& g) override;
-    void resized() override;
-    void timerCallback() override;
+    void keyDown (const KeyPress& keys, const Point<float>& position) override;
+    void mouseDoubleClick (const MouseEvent& e) override;
+    void mouseDown (const MouseEvent& event) override;
+    void mouseDrag (const MouseEvent& event) override;
 
     // ===============================================================================
 
-    void setReadOnly(bool shouldBeReadOnly);
-
-    void setText(const juce::String& newText, juce::NotificationType notifyListeners);
-    void setPadding(float newPadding);
-    void setFont(const yup::Font& f, float newFontSize=16.0f);
-    void setJustification(StyledText::Alignment newAlignment);
-
-    void setMultiline(bool shouldBeMultiline);
+    void paint (Graphics& g) override;
+    void resized () override;
+    void timerCallback () override;
 
     // ===============================================================================
 
-    void addListener(Listener* l);
-    void removeListener(Listener* l);
+    void setReadOnly (bool shouldBeReadOnly);
+
+    void setText (const juce::String& newText, juce::NotificationType notifyListeners);
+    void setPadding (float newPadding);
+    void setFont (const yup::Font& f, float newFontSize = 16.0f);
+    void setJustification (StyledText::Alignment newAlignment);
+
+    void setMultiline (bool shouldBeMultiline);
+
+    // ===============================================================================
+
+    void addListener (Listener* l);
+    void removeListener (Listener* l);
 
     // ===============================================================================
 
 private:
-
     rive::rcp<rive::RenderPath> path;
 
     Scrollbar scrollbar;
     Scrollbar::InternalViewport viewport;
-    void insert(const String& text);
-    void insert(char textChar);
-    void deleteSelection(int delta);
-    void navigate(bool select, int delta);
-    String getSelection() const;
-    void perform(int command);
+    void insert (const String& text);
+    void insert (char textChar);
+    void deleteSelection (int delta);
+    void navigate (bool select, int delta);
+    String getSelection () const;
+    void perform (int command);
 
-    void rebuildText();
+    void rebuildText ();
 
     // A magic number for navigating to the start of the text
     static constexpr int BeginPos = -100000;
@@ -123,7 +121,7 @@ private:
 
     // Up
     static constexpr int PrevLine = -40000;
-    
+
     // Ctrl + C
     static constexpr int Copy = 100001;
 
@@ -141,12 +139,12 @@ private:
 
     // Ctrl + A
     static constexpr int SelectAll = 100006;
-    
-    struct Updater: public AsyncUpdater
-    {
-        Updater(Label& parent_);
 
-	    void handleAsyncUpdate() override;
+    struct Updater : public AsyncUpdater
+    {
+        Updater (Label& parent_);
+
+        void handleAsyncUpdate () override;
 
     private:
         Label& parent;
@@ -155,109 +153,35 @@ private:
     // Internal class for handling the cursor selection.
     struct Cursor
     {
-        Cursor(const Label& l);;
+        Cursor (const Label& l);;
 
-        operator bool() const { return charIndex != -1; }
+        operator bool () const { return charIndex != -1; }
 
-        bool moveToStart();
-        bool moveToEnd();
+        bool moveToStart ();
+        bool moveToEnd ();
 
-        bool moveToStartOfLine()
-        {
-            auto prevIndex = charIndex;
-            charIndex = parent.lineInformation[lineNumber].second.getStart();
-            return prevIndex != charIndex;
-        }
+        bool moveToStartOfLine ();
 
-        bool moveToEndOfLine()
-        {
-            auto prevIndex = charIndex;
-            charIndex = parent.lineInformation[lineNumber].second.getEnd();
-            return prevIndex != charIndex;
-        }
+        bool moveToEndOfLine ();
 
-        bool moveTo(const Cursor& other);
-        bool moveTo(int pos);
-        bool move(int delta);
+        bool moveTo (const Cursor& other);
+        bool moveTo (int pos);
+        bool move (int delta);
 
-        bool moveLine(int delta);
+        bool moveLine (int delta);
 
-        void scrollToShow()
-        {
-            auto yPos = parent.lineInformation[lineNumber].first;
-            parent.viewport.scrollToShow({yPos, yPos + parent.fontSize * 1.5f});
-        }
+        void scrollToShow ();
 
-        bool updateFromMouseEvent(const MouseEvent& e);
-        Rectangle<float> getPosition() const;
-        void clear();
+        bool updateFromMouseEvent (const MouseEvent& e);
+        Rectangle<float> getPosition () const;
+        void clear ();
 
-        Range<int> getSelection(const Cursor& other) const;
+        Range<int> getSelection (const Cursor& other) const;
 
-        RectangleList<float> getSelectionRectangles(const Cursor& other) const
-        {
-            RectangleList<float> list;
-
-            auto firstPos = getPosition().withWidth(0.0f);
-			auto secondPos = other.getPosition().withWidth(0.0f);
-
-            if(charIndex > other.charIndex)
-                std::swap(firstPos, secondPos);
-
-            if(lineNumber == other.lineNumber)
-            {
-	            list.addWithoutMerge(firstPos.smallestContainingRectangle(secondPos));
-            }
-            else
-            {
-                auto minChar = jmin(charIndex, other.charIndex);
-                auto maxChar = jmax(charIndex, other.charIndex);
-
-                Cursor minLineEnd(parent);
-
-                minLineEnd.moveTo(minChar);
-                minLineEnd.moveToEndOfLine();
-                auto firstLineEnd = minLineEnd.getPosition().withWidth(0.0f);
-
-                Cursor maxLineStart(parent);
-                maxLineStart.moveTo(maxChar);
-                maxLineStart.moveToStartOfLine();
-
-                auto lastLineStart = maxLineStart.getPosition().withWidth(0.0f);
-
-                list.addWithoutMerge(firstPos.smallestContainingRectangle(firstLineEnd));
-                list.addWithoutMerge(secondPos.smallestContainingRectangle(lastLineStart));
-            }
-
-            Range<int> lineRange(jmin(lineNumber, other.lineNumber), jmax(lineNumber, other.lineNumber));
-
-            for(int i = lineRange.getStart() + 1; i < lineRange.getEnd(); i++)
-            {
-	            auto left = parent.xPosRanges[i].getFirst().getStart();
-                auto y = parent.lineInformation[i].first;
-                auto right = parent.xPosRanges[i].getLast().getEnd();
-                auto w = right - left;
-                auto h = parent.fontSize;
-
-                list.addWithoutMerge({left, y, w, h});
-            }
-
-            return list;
-        }
+        RectangleList<float> getSelectionRectangles (const Cursor& other) const;
 
     private:
-
-        void updateLineNumber()
-        {
-	        for(int i = 0; i < parent.lineInformation.size(); i++)
-	        {
-		        if(parent.lineInformation[i].second.contains(charIndex))
-		        {
-			        lineNumber = i;
-                    break;
-		        }
-	        }
-        }
+        void updateLineNumber ();
 
         const Label& parent;
         int charIndex = -1;
@@ -271,10 +195,7 @@ private:
     bool readOnly = false;
     bool multiline = false;
 
-    juce::Array<Range<float>> getXPositions(int lineNumber) const
-    {
-	    return xPosRanges[lineNumber];
-    }
+    juce::Array<Range<float>> getXPositions (int lineNumber) const;
 
     juce::ListenerList<Listener> listeners;
     juce::Array<juce::Array<Range<float>>> xPosRanges;
@@ -282,7 +203,7 @@ private:
 
     Cursor downCursor;
     Cursor dragCursor;
-    
+
     StyledText::Alignment alignment = StyledText::Alignment::center;
     Font font;
     float fontSize = 16.0f;
@@ -292,9 +213,7 @@ private:
     float padding = 5.0f;
     float alpha = 0.0f;
 
-    JUCE_DECLARE_WEAK_REFERENCEABLE(Label);
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Label);
+    JUCE_DECLARE_WEAK_REFERENCEABLE (Label);
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Label);
 };
-
-
 }

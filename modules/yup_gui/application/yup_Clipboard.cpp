@@ -20,55 +20,52 @@
 */
 
 
-
 namespace yup
 {
-
-String Clipboard::paste()
+String Clipboard::paste ()
 {
-	if(auto cl = ScopedClipboardLoader())
-	{
-		ScopedDataAccess data(cl.getClipboardData());
-		return data.toString();
-	}
+    if (auto cl = ScopedClipboardLoader())
+    {
+        ScopedDataAccess data (cl.getClipboardData());
+        return data.toString();
+    }
 
-	return {};
+    return {};
 }
 
-void Clipboard::copy(const String& text)
+void Clipboard::copy (const String& text)
 {
-	if(auto cl = ScopedClipboardLoader())
-	{
-		if(auto buffer = cl.allocate(text))
-		{
-			ScopedDataAccess data(buffer);
-			data.writeString(text);
-			cl.writeToClipboard(data.getData());
-		}
-	}
+    if (auto cl = ScopedClipboardLoader())
+    {
+        if (auto buffer = cl.allocate (text))
+        {
+            ScopedDataAccess data (buffer);
+            data.writeString (text);
+            cl.writeToClipboard (data.getData());
+        }
+    }
 }
 
-const wchar_t* Clipboard::ScopedDataAccess::getData() const
+const wchar_t* Clipboard::ScopedDataAccess::getData () const
 {
-	return static_cast<const wchar_t*>(data);
+    return static_cast<const wchar_t*> (data);
 }
 
-wchar_t* Clipboard::ScopedDataAccess::getData()
+wchar_t* Clipboard::ScopedDataAccess::getData ()
 {
-	return static_cast<wchar_t*>(data);
+    return static_cast<wchar_t*> (data);
 }
 
-void Clipboard::ScopedDataAccess::writeString(const String& text)
+void Clipboard::ScopedDataAccess::writeString (const String& text)
 {
-#if JUCE_WINDOWS
-	auto bytesNeeded = CharPointer_UTF16::getBytesRequiredFor (text.getCharPointer()) + 4;
-	text.copyToUTF16(getData(), bytesNeeded);
-#endif
+    #if JUCE_WINDOWS
+    auto bytesNeeded = CharPointer_UTF16::getBytesRequiredFor (text.getCharPointer()) + 4;
+    text.copyToUTF16 (getData(), bytesNeeded);
+    #endif
 }
 
-String Clipboard::ScopedDataAccess::toString() const
+String Clipboard::ScopedDataAccess::toString () const
 {
-	return String(getData(), getNumBytes());
+    return String (getData(), getNumBytes());
 }
-
 } // namespace yup

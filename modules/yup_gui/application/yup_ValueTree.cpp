@@ -21,393 +21,430 @@
 
 namespace yup
 {
-
-DataModelTree::PropertyListener::PropertyListener(Type type_, const Array<Identifier>& ids_):
-	ListenerBase(type_),
-	ids(ids_)
-{}
-
-DataModelTree::ChildIterator::ChildIterator(const DataModelTree& p)
+DataModelTree::PropertyListener::PropertyListener (Type type_, const Array<Identifier>& ids_)
+    : ListenerBase (type_)
+    , ids (ids_)
 {
-	if(p)
-	{
-		children.reserve(p.data->children.size());
-
-		for(auto c: p.data->children)
-		{
-			DataModelTree copy(c);
-			children.push_back(copy);
-		}
-	}
 }
 
-DataModelTree* DataModelTree::ChildIterator::begin()
+DataModelTree::ChildIterator::ChildIterator (const DataModelTree& p)
 {
-	return children.data();
+    if (p)
+    {
+        children.reserve (p.data->children.size());
+
+        for (auto c : p.data->children)
+        {
+            DataModelTree copy (c);
+            children.push_back (copy);
+        }
+    }
 }
 
-DataModelTree* DataModelTree::ChildIterator::end()
+DataModelTree* DataModelTree::ChildIterator::begin ()
 {
-	return children.data() + children.size();
+    return children.data();
 }
 
-const DataModelTree* DataModelTree::ChildIterator::begin() const
+DataModelTree* DataModelTree::ChildIterator::end ()
 {
-	return children.data();
+    return children.data() + children.size();
 }
 
-const DataModelTree* DataModelTree::ChildIterator::end() const
+const DataModelTree* DataModelTree::ChildIterator::begin () const
 {
-	return children.data() + children.size();
+    return children.data();
 }
 
-DataModelTree::ChildIterator DataModelTree::getChildren() const
-{ return ChildIterator(*this); }
-
-bool DataModelTree::forEach(const std::function<bool(DataModelTree&)>& f)
+const DataModelTree* DataModelTree::ChildIterator::end () const
 {
-	if(*this)
-	{
-		if(f(*this))
-			return true;
-
-		for(auto c: data->children)
-		{
-			DataModelTree cv(c);
-
-			if(cv.forEach(f))
-				return true;
-		}
-	}
-
-	return false;
+    return children.data() + children.size();
 }
 
-bool DataModelTree::forEachParent(const std::function<bool(DataModelTree&)>& f)
+DataModelTree::ChildIterator DataModelTree::getChildren () const
 {
-	if(!*this)
-		return false;
-
-	if(f(*this))
-		return true;
-
-	if(auto p = getParent())
-		return p.forEachParent(f);
-
-	return false;
+    return ChildIterator (*this);
 }
 
-void DataModelTree::addPropertyListener(PropertyListener* pl)
+bool DataModelTree::forEach (const std::function<bool (DataModelTree&)>& f)
 {
-	auto l = getListeners(true);
-	l->propertyListeners.add(pl);
-	pl->attach(true);
+    if (*this)
+    {
+        if (f (*this))
+            return true;
+
+        for (auto c : data->children)
+        {
+            DataModelTree cv (c);
+
+            if (cv.forEach (f))
+                return true;
+        }
+    }
+
+    return false;
 }
 
-void DataModelTree::removePropertyListener(PropertyListener* pl)
+bool DataModelTree::forEachParent (const std::function<bool (DataModelTree&)>& f)
 {
-	if(auto l = getListeners(false))
-	{
-		l->propertyListeners.remove(pl);
-		pl->attach(false);
-	}
+    if (! *this)
+        return false;
+
+    if (f (*this))
+        return true;
+
+    if (auto p = getParent())
+        return p.forEachParent (f);
+
+    return false;
 }
 
-void DataModelTree::addChildListener(ChildListener* cl)
+void DataModelTree::addPropertyListener (PropertyListener* pl)
 {
-	auto l = getListeners(true);
-	l->childListeners.add(cl);
-	cl->attach(true);
+    auto l = getListeners (true);
+    l->propertyListeners.add (pl);
+    pl->attach (true);
 }
 
-void DataModelTree::removeChildListener(ChildListener* cl)
+void DataModelTree::removePropertyListener (PropertyListener* pl)
 {
-	if(auto l = getListeners(false))
-	{
-		l->childListeners.remove(cl);
-		cl->attach(false);
-	}
+    if (auto l = getListeners (false))
+    {
+        l->propertyListeners.remove (pl);
+        pl->attach (false);
+    }
+}
+
+void DataModelTree::addChildListener (ChildListener* cl)
+{
+    auto l = getListeners (true);
+    l->childListeners.add (cl);
+    cl->attach (true);
+}
+
+void DataModelTree::removeChildListener (ChildListener* cl)
+{
+    if (auto l = getListeners (false))
+    {
+        l->childListeners.remove (cl);
+        cl->attach (false);
+    }
 }
 
 
-
-DataModelTree::DataModelTree(const Identifier& id, UndoManager* um):
-	data(new DataObject(id, um))
-{}
-
-DataModelTree::~DataModelTree()
+DataModelTree::DataModelTree (const Identifier& id, UndoManager* um)
+    : data (new DataObject (id, um))
 {
-#if JUCE_DEBUG
-	if(debugDataListener != nullptr)
-	{
-		removeChildListener(debugDataListener.get());
-		removePropertyListener(dynamic_cast<PropertyListener*>(debugDataListener.get()));
-		debugDataListener.reset();
-	}
-#endif
 }
 
-DataModelTree& DataModelTree::operator=(const DataModelTree& other)
+DataModelTree::DataModelTree (const DataModelTree& other)
+    : data (other.data)
 {
-	data = other.data;
-	return *this;
 }
 
-DataModelTree::DataModelTree(DataModelTree&& other) noexcept:
-	data(std::move(other.data))
-{}
-
-DataModelTree& DataModelTree::operator=(DataModelTree&& other) noexcept
+DataModelTree::~DataModelTree ()
 {
-	std::swap(data, other.data);
-	return *this;
+    #if JUCE_DEBUG
+    if (debugDataListener != nullptr)
+    {
+        removeChildListener (debugDataListener.get());
+        removePropertyListener (dynamic_cast<PropertyListener*> (debugDataListener.get()));
+        debugDataListener.reset();
+    }
+    #endif
 }
 
-DataModelTree DataModelTree::getChild(int index) const
+DataModelTree& DataModelTree::operator= (const DataModelTree& other)
 {
-	if(*this)
-	{
-		if(auto c = data->children[index])
-		{
-			return DataModelTree(c);;
-		}
-	}
-
-	return {};
+    data = other.data;
+    return *this;
 }
 
-DataModelTree DataModelTree::getChildWithName(const Identifier& id) const
+DataModelTree::DataModelTree (DataModelTree&& other) noexcept
+    : data (std::move (other.data))
 {
-	if(*this)
-	{
-		for(auto c: data->children)
-		{
-			if(c->id == id)
-				return DataModelTree(c);
-		}
-	}
-
-	return {};
 }
 
-DataModelTree DataModelTree::getParent() const
+DataModelTree& DataModelTree::operator= (DataModelTree&& other) noexcept
 {
-	if(*this && data->parent.get())
-		return DataModelTree(data->parent.get());
-
-	return {};
+    std::swap (data, other.data);
+    return *this;
 }
 
-Identifier DataModelTree::getType() const
+DataModelTree DataModelTree::getChild (int index) const
 {
-	if(*this)
-		return data->id;
+    if (*this)
+    {
+        if (auto c = data->children[index])
+        {
+            return DataModelTree (c);;
+        }
+    }
 
-	return {};
+    return {};
 }
 
-DataModelTree DataModelTree::getRoot() const
+DataModelTree DataModelTree::getChildWithName (const Identifier& id) const
 {
-	auto p = *this;
+    if (*this)
+    {
+        for (auto c : data->children)
+        {
+            if (c->id == id)
+                return DataModelTree (c);
+        }
+    }
 
-	auto parent = p.getParent();
-
-	while(parent)
-	{
-		p = parent;
-		parent = p.getParent();
-	}
-
-	return p;
+    return {};
 }
 
-DataModelTree DataModelTree::getOrCreateChildWithName(const Identifier& id)
+DataModelTree DataModelTree::getParent () const
 {
-	if(auto c = getChildWithName(id))
-		return c;
+    if (*this && data->parent.get())
+        return DataModelTree (data->parent.get());
 
-	DataModelTree newChild(id);
-	addChild(newChild, -1);
-	return newChild;
+    return {};
 }
 
-DataModelTree DataModelTree::addChild(const DataModelTree& child, int index)
+Identifier DataModelTree::getType () const
 {
-	if(child && *this)
-	{
-		jassert(child.data->parent == nullptr);
-		auto childData = child.data;
+    if (*this)
+        return data->id;
 
-		perform([childData, index](DataModelTree& v, bool isUndo)
-		{
-			jassert(v);
-
-			DataModelTree c(childData);
-
-			if(isUndo)
-			{
-				v.sendChildChangeMessage(c, false);
-				v.data->remove(childData); 
-			}
-			else
-			{
-				v.data->add(childData, index);
-				v.sendChildChangeMessage(c, true);
-			}
-                
-			return true;
-		});
-	}
-
-	return child;
+    return {};
 }
 
-bool DataModelTree::removeChild(const DataModelTree& child)
+int DataModelTree::getNumChildren () const noexcept
 {
-	if(child && *this)
-	{
-		auto childData = child.data;
-		auto idx = data->children.indexOf(child.data);
-		if(idx != -1)
-		{
-			perform([childData, idx](DataModelTree& v, bool isUndo)
-			{
-				DataModelTree c(childData);
-
-				if(isUndo)
-				{
-					v.data->add(childData, idx);
-					v.sendChildChangeMessage(c, true);
-				}
-		                
-				else
-				{
-					v.sendChildChangeMessage(c, false);
-					v.data->remove(childData);
-				}
-		            
-				return true; 
-			});
-		}
-	}
-
-	return false;
+    if (*this)
+        return data->children.size();
+    else
+        return 0;
 }
 
-DataModelTree::DataObject::DataObject(const Identifier& id_, UndoManager* um):
-	undoManager(um),
-	id(id_)
-{}
-
-void DataModelTree::DataObject::add(Ptr child, int index)
+DataModelTree DataModelTree::getRoot () const
 {
-	child->parent = this;
-	child->undoManager = undoManager;
+    auto p = *this;
 
-	if(index == -1)
-		children.add(child);
-	else
-		children.insert(index, child);
+    auto parent = p.getParent();
+
+    while (parent)
+    {
+        p = parent;
+        parent = p.getParent();
+    }
+
+    return p;
 }
 
-bool DataModelTree::DataObject::remove(Ptr child)
+DataModelTree DataModelTree::getOrCreateChildWithName (const Identifier& id)
 {
-	if(children.contains(child))
-	{
-		child->children.removeObject(child);
-		child->parent = nullptr;
-		child->undoManager = nullptr;
-		return true;
-	}
+    if (auto c = getChildWithName (id))
+        return c;
 
-	return false;
+    DataModelTree newChild (id);
+    addChild (newChild, -1);
+    return newChild;
 }
 
-DataModelTree::Property<DataModelTree> DataModelTree::operator[](const Identifier& id)
+DataModelTree DataModelTree::addChild (const DataModelTree& child, int index)
 {
-	if(data != nullptr)
-		return { *this, id };
+    if (child && *this)
+    {
+        jassert (child.data->parent == nullptr);
+        auto childData = child.data;
 
-	return {};
+        perform ([childData, index](DataModelTree& v, bool isUndo)
+        {
+            jassert (v);
+
+            DataModelTree c (childData);
+
+            if (isUndo)
+            {
+                v.sendChildChangeMessage (c, false);
+                v.data->remove (childData);
+            }
+            else
+            {
+                v.data->add (childData, index);
+                v.sendChildChangeMessage (c, true);
+            }
+
+            return true;
+        });
+    }
+
+    return child;
 }
 
-DataModelTree::Property<const DataModelTree> DataModelTree::operator[](const Identifier& id) const
+bool DataModelTree::isChildOf (const DataModelTree& possibleParent) const
 {
-	if(data != nullptr)
-		return { *this, id };
+    if (*this)
+        return data->parent.get() == possibleParent.data.get();
 
-	return {};
+    return false;
 }
 
-DataModelTree::Property<DataModelTree> DataModelTree::operator[](const char* id)
+int DataModelTree::indexOf (const DataModelTree& child)
 {
-	return (*this)[Identifier(id)];
+    if (*this)
+        return data->children.indexOf (child.data);
+
+    return -1;
 }
 
-DataModelTree::Property<const DataModelTree> DataModelTree::operator[](const char* id) const
+bool DataModelTree::removeChild (const DataModelTree& child)
 {
-	return (*this)[Identifier(id)];
+    if (child && *this)
+    {
+        auto childData = child.data;
+        auto idx = data->children.indexOf (child.data);
+        if (idx != -1)
+        {
+            perform ([childData, idx](DataModelTree& v, bool isUndo)
+            {
+                DataModelTree c (childData);
+
+                if (isUndo)
+                {
+                    v.data->add (childData, idx);
+                    v.sendChildChangeMessage (c, true);
+                }
+
+                else
+                {
+                    v.sendChildChangeMessage (c, false);
+                    v.data->remove (childData);
+                }
+
+                return true;
+            });
+        }
+    }
+
+    return false;
 }
 
-DataModelTree::PropertyIterator<DataModelTree> DataModelTree::getProperties()
-{ return PropertyIterator(*this); }
-
-DataModelTree::PropertyIterator<const DataModelTree> DataModelTree::getProperties() const
-{ return PropertyIterator(*this); }
-
-void DataModelTree::sendChildChangeMessage(DataModelTree& child, bool wasAdded)
+DataModelTree::DataObject::DataObject (const Identifier& id_, UndoManager* um)
+    : undoManager (um)
+    , id (id_)
 {
-	if(auto l = getListeners(false))
-	{
-		l->childListeners.call([child, wasAdded](ChildListener& cl)
-		{
-			DataModelTree copy(child);
-			cl.childAddedOrRemoved(copy, wasAdded);
-		});
-	}
 }
 
-void DataModelTree::sendPropertyChangeMessage(const DataModelTree& v, const Identifier& id)
+void DataModelTree::DataObject::add (Ptr child, int index)
 {
-	if(auto l = getListeners(false))
-	{
-		for(int i = 0; i < l->lambdaPropertyListeners.size(); i++)
-		{
-			if(l->lambdaPropertyListeners[i]->isDangling())
-			{
-				auto pl = l->lambdaPropertyListeners.removeAndReturn(i--);
-				l->propertyListeners.remove(pl);
-			}
-		}
+    child->parent = this;
+    child->undoManager = undoManager;
 
-		l->propertyListeners.call([this, v, id](PropertyListener& p)
-		{
-			auto shouldFire = p.getListenerType() == ListenerBase::Type::NotifyAtChildEvents;
-			shouldFire |= v.data == this->data;
-			shouldFire &= p.matches(id);
-
-			if(shouldFire)
-				p.propertyChanged(*this, id);
-		});
-	}
-
-	if(auto p = getParent())
-	{
-		p.sendPropertyChangeMessage(v, id);
-	}
+    if (index == -1)
+        children.add (child);
+    else
+        children.insert (index, child);
 }
 
-DataModelTree::DataObject::Listeners* DataModelTree::getListeners(bool createIfNotExist)
+bool DataModelTree::DataObject::remove (Ptr child)
 {
-	if(*this)
-	{
-		if(data->listeners == nullptr && createIfNotExist)
-			data->listeners.reset(new DataObject::Listeners());
+    if (children.contains (child))
+    {
+        child->children.removeObject (child);
+        child->parent = nullptr;
+        child->undoManager = nullptr;
+        return true;
+    }
 
-		return data->listeners.get();
-	}
+    return false;
+}
 
-	return nullptr;
+DataModelTree::Property<DataModelTree> DataModelTree::operator[] (const Identifier& id)
+{
+    if (data != nullptr)
+        return { *this, id };
+
+    return {};
+}
+
+DataModelTree::Property<const DataModelTree> DataModelTree::operator[] (const Identifier& id) const
+{
+    if (data != nullptr)
+        return { *this, id };
+
+    return {};
+}
+
+DataModelTree::Property<DataModelTree> DataModelTree::operator[] (const char* id)
+{
+    return (*this)[Identifier (id)];
+}
+
+DataModelTree::Property<const DataModelTree> DataModelTree::operator[] (const char* id) const
+{
+    return (*this)[Identifier (id)];
+}
+
+DataModelTree::PropertyIterator<DataModelTree> DataModelTree::getProperties ()
+{
+    return PropertyIterator (*this);
+}
+
+DataModelTree::PropertyIterator<const DataModelTree> DataModelTree::getProperties () const
+{
+    return PropertyIterator (*this);
+}
+
+void DataModelTree::sendChildChangeMessage (DataModelTree& child, bool wasAdded)
+{
+    if (auto l = getListeners (false))
+    {
+        l->childListeners.call ([child, wasAdded](ChildListener& cl)
+        {
+            DataModelTree copy (child);
+            cl.childAddedOrRemoved (copy, wasAdded);
+        });
+    }
+}
+
+void DataModelTree::sendPropertyChangeMessage (const DataModelTree& v, const Identifier& id)
+{
+    if (auto l = getListeners (false))
+    {
+        for (int i = 0; i < l->lambdaPropertyListeners.size(); i++)
+        {
+            if (l->lambdaPropertyListeners[i]->isDangling())
+            {
+                auto pl = l->lambdaPropertyListeners.removeAndReturn (i--);
+                l->propertyListeners.remove (pl);
+            }
+        }
+
+        l->propertyListeners.call ([this, v, id](PropertyListener& p)
+        {
+            auto shouldFire = p.getListenerType() == ListenerBase::Type::NotifyAtChildEvents;
+            shouldFire |= v.data == this->data;
+            shouldFire &= p.matches (id);
+
+            if (shouldFire)
+                p.propertyChanged (*this, id);
+        });
+    }
+
+    if (auto p = getParent())
+    {
+        p.sendPropertyChangeMessage (v, id);
+    }
+}
+
+DataModelTree::DataObject::Listeners* DataModelTree::getListeners (bool createIfNotExist)
+{
+    if (*this)
+    {
+        if (data->listeners == nullptr && createIfNotExist)
+            data->listeners.reset (new DataObject::Listeners());
+
+        return data->listeners.get();
+    }
+
+    return nullptr;
 }
 
 #if JUCE_DEBUG
@@ -419,66 +456,67 @@ struct DataModelTree::DebugDataModel
         std::string id;
         std::string value;
     };
+
     std::vector<property> properties;
     std::vector<DebugDataModel> children;
 };
 
-struct DataModelTree::DebugDataListener: public ChildListener,
-									 public PropertyListener
+struct DataModelTree::DebugDataListener
+    : public ChildListener,
+      public PropertyListener
 {
-    DebugDataListener(DataModelTree& v_):
-	  PropertyListener(ListenerBase::Type::NotifyAtChildEvents),
-	  ChildListener(ListenerBase::Type::NotifyAtChildEvents),
-      v(v_)
+    DebugDataListener (DataModelTree& v_)
+        : PropertyListener (ListenerBase::Type::NotifyAtChildEvents)
+        , ChildListener (ListenerBase::Type::NotifyAtChildEvents)
+        , v (v_)
     {
-        v.addPropertyListener(this);
-        v.addChildListener(this);
+        v.addPropertyListener (this);
+        v.addChildListener (this);
 
-		data = createDebugDataModel(v);
+        data = createDebugDataModel (v);
 
-#if JUCE_DEBUG
-		v.debugData = &data;
-#endif
+        #if JUCE_DEBUG
+        v.debugData = &data;
+        #endif
     };
 
-    ~DebugDataListener()
+    ~DebugDataListener ()
     {
-        v.removePropertyListener(this);
-        v.removeChildListener(this);
+        v.removePropertyListener (this);
+        v.removeChildListener (this);
     }
 
-	static DebugDataModel createDebugDataModel(DataModelTree& vt)
+    static DebugDataModel createDebugDataModel (DataModelTree& vt)
     {
         DebugDataModel root;
 
-        for(auto& v: vt.getProperties())
+        for (auto& v : vt.getProperties())
         {
-	        DebugDataModel::property p;
+            DebugDataModel::property p;
             p.id = v.getIdentifier().toString().toStdString();
             p.value = v.get().toString().toStdString();
-            root.properties.push_back(p);
+            root.properties.push_back (p);
         }
 
-        for(auto c: vt.getChildren())
+        for (auto c : vt.getChildren())
         {
-	        root.children.push_back(createDebugDataModel(c));
+            root.children.push_back (createDebugDataModel (c));
         }
 
         return root;
     }
 
 
-    void propertyChanged(const DataModelTree&, const Identifier&) override
+    void propertyChanged (const DataModelTree&, const Identifier&) override
     {
-
-	    data = createDebugDataModel(v);
-		v.debugData = &data;
+        data = createDebugDataModel (v);
+        v.debugData = &data;
     }
 
-    void childAddedOrRemoved(DataModelTree& newChild, bool wasAdded) override
+    void childAddedOrRemoved (DataModelTree& newChild, bool wasAdded) override
     {
-	    data = createDebugDataModel(v);
-		v.debugData = &data;
+        data = createDebugDataModel (v);
+        v.debugData = &data;
     }
 
     DebugDataModel data;
@@ -487,95 +525,93 @@ struct DataModelTree::DebugDataListener: public ChildListener,
 
 #endif
 
-void DataModelTree::setCreateDebugModel()
+void DataModelTree::setCreateDebugModel ()
 {
-#if JUCE_DEBUG
-	auto l = getListeners(true);
-	debugDataListener.reset(new DebugDataListener(*this));
-#endif
+    #if JUCE_DEBUG
+    auto l = getListeners (true);
+    debugDataListener.reset (new DebugDataListener (*this));
+    #endif
 }
 
-std::unique_ptr<juce::XmlElement> DataModelTree::createXml() const
+std::unique_ptr<juce::XmlElement> DataModelTree::createXml () const
 {
-	auto xml = std::make_unique<juce::XmlElement>(getType());
+    auto xml = std::make_unique<juce::XmlElement> (getType());
 
-	for(const auto& p: getProperties())
-		xml->setAttribute(p.getIdentifier(), p.get().toString());
+    for (const auto& p : getProperties())
+        xml->setAttribute (p.getIdentifier(), p.get().toString());
 
-	for(const auto& c: getChildren())
-		xml->addChildElement(c.createXml().release());
+    for (const auto& c : getChildren())
+        xml->addChildElement (c.createXml().release());
 
-	return xml;
+    return xml;
 }
 
-DataModelTree DataModelTree::fromXml(XmlElement& xml, UndoManager* um)
+DataModelTree DataModelTree::fromXml (XmlElement& xml, UndoManager* um)
 {
-	DataModelTree v(xml.getTagName(), um);
+    DataModelTree v (xml.getTagName(), um);
 
-	for(int i = 0; i < xml.getNumAttributes(); i++)
-	{
-		v[Identifier(xml.getAttributeName(i))] = xml.getAttributeValue(i);
-	}
+    for (int i = 0; i < xml.getNumAttributes(); i++)
+    {
+        v[Identifier (xml.getAttributeName (i))] = xml.getAttributeValue (i);
+    }
 
-	for(int i = 0; i < xml.getNumChildElements(); i++)
-	{
-		auto childTree = fromXml(*xml.getChildElement(i), um);
-		v.addChild(childTree, -1);
-	}
+    for (int i = 0; i < xml.getNumChildElements(); i++)
+    {
+        auto childTree = fromXml (*xml.getChildElement (i), um);
+        v.addChild (childTree, -1);
+    }
 
-	return v;
+    return v;
 }
 
-void DataModelTree::writeToStream(OutputStream& out)
+void DataModelTree::writeToStream (OutputStream& out)
 {
-	static constexpr uint8 DataModelTreeStartMarker = 50;
-	static constexpr uint8 DataModelTreeEndMarker = 50;
-
-
+    static constexpr uint8 DataModelTreeStartMarker = 50;
+    static constexpr uint8 DataModelTreeEndMarker = 50;
 }
 
-DataModelTree DataModelTree::fromInputStream(InputStream& input)
+DataModelTree DataModelTree::fromInputStream (InputStream& input)
 {
-	return {};
+    return {};
 }
 
-void DataModelTree::dump()
+void DataModelTree::dump ()
 {
-#if JUCE_DEBUG
-	DBG("Dumping DataModelTree " + getType() + "====================");
-	forEach([&](DataModelTree& v)
-	{
-		String path;
-		v.forEachParent([&](DataModelTree& parent)
-		{
-			path = parent.getType() + "." + path;
-			return false;
-		});
+    #if JUCE_DEBUG
+    DBG ("Dumping DataModelTree " + getType() + "====================");
+    forEach ([&](DataModelTree& v)
+    {
+        String path;
+        v.forEachParent ([&](DataModelTree& parent)
+        {
+            path = parent.getType() + "." + path;
+            return false;
+        });
 
-		for(auto& p: v.getProperties())
-		{
-			String line = "  " + path;
-			line << p.getIdentifier();
-			line << ": " << p.get().toString();
-			DBG(line);
-		}
-            
-		return false;
-	});
+        for (auto& p : v.getProperties())
+        {
+            String line = "  " + path;
+            line << p.getIdentifier();
+            line << ": " << p.get().toString();
+            DBG (line);
+        }
 
-	DBG("End of dump ==================================");
-#endif
+        return false;
+    });
+
+    DBG ("End of dump ==================================");
+    #endif
 }
 
-void DataModelTree::perform(const std::function<bool(DataModelTree&, bool)>& f)
+void DataModelTree::perform (const std::function<bool (DataModelTree&, bool)>& f)
 {
-	if(*this)
-	{
-		if(data->undoManager != nullptr)
-			data->undoManager->perform<DataModelTree>(*this, f);
-		else
-			f(*this, false);
-	}
+    if (*this)
+    {
+        if (data->undoManager != nullptr)
+            data->undoManager->perform<DataModelTree> (*this, f);
+        else
+            f (*this, false);
+    }
 }
 } // namespace yup
 
