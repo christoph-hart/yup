@@ -1823,7 +1823,7 @@ pls::DrawBatch& PLSRenderContext::LogicalFlush::pushDraw(PLSDraw* draw,
         {
             // depthStencil can't mix drawContents in a batch.
             assert(batch.drawContents == draw->drawContents());
-            assert((batch.shaderFeatures & pls::ShaderFeatures::ENABLE_ADVANCED_BLEND) ==
+            assert((int)(batch.shaderFeatures & pls::ShaderFeatures::ENABLE_ADVANCED_BLEND) == (int)
                    (draw->blendMode() != BlendMode::srcOver));
             // If using KHR_blend_equation_advanced, we can't mix blend modes in a batch.
             assert(!m_ctx->platformFeatures().supportsKHRBlendEquations ||

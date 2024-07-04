@@ -784,15 +784,15 @@ String SystemStats::getUniqueDeviceID()
             const auto stringFromOffset = [&content, &strings] (size_t byteOffset) -> String
             {
                 if (! isPositiveAndBelow (byteOffset, content.size()))
-                    return std::string{};
+                    return String();
 
                 const auto index = std::to_integer<size_t> (content[byteOffset]);
 
                 if (index <= 0 || strings.size() < index)
-                    return std::string{};
+                    return String();
 
                 const auto view = strings[index - 1];
-                return std::string { view };
+                return String(std::string { view });
             };
 
             enum

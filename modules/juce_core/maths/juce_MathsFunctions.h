@@ -523,7 +523,7 @@ void findMinAndMax (const Type* values, int numValues, Type& lowest, Type& highe
                 and upperLimit (inclusive)
     @see jmin, jmax, jmap
 */
-template <typename Type>
+template <typename Type> constexpr
 Type jlimit (Type lowerLimit,
              Type upperLimit,
              Type valueToConstrain) noexcept

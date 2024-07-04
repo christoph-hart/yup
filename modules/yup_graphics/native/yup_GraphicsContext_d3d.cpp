@@ -113,7 +113,7 @@ private:
     rcp<PLSRenderTargetD3D> m_renderTarget;
 };
 
-std::unique_ptr<GraphicsContext> juce_constructDirect3DGraphicsContext (Options fiddleOptions)
+std::unique_ptr<GraphicsContext> juce_constructDirect3DGraphicsContext (yup::GraphicsContext::Options fiddleOptions)
 {
     // Create a DXGIFactory object.
     ComPtr<IDXGIFactory2> factory;
